@@ -28,6 +28,20 @@ body {
   --md-editor-font-family: var(--font-mono, monospace);
 }
 
+/* 隐藏横向滚动条（用于 Chip 筛选） */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 底部安全区域适配 */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
   width: 6px;

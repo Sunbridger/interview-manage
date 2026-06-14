@@ -64,10 +64,10 @@ export default function ReviewPage() {
   ];
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-3xl mx-auto space-y-4 lg:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-1">复习模式</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-xl lg:text-2xl font-bold text-foreground mb-1">复习模式</h1>
+        <p className="text-xs lg:text-sm text-muted-foreground">
           选择一种模式开始复习
         </p>
       </div>

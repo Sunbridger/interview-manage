@@ -1,0 +1,96 @@
+<h2>方案 C 详细布局设计</h2>
+<p class="subtitle">Sidebar 折叠为图标 + 内容区按页面类型分栏</p>
+
+<h3>1. Sidebar 行为</h3>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">桌面端 — 默认折叠（图标模式）</div>
+    <div class="mockup-body" style="display:flex; height:260px;">
+      <div style="width:56px; flex-shrink:0; border-right:1px solid #e2e8f0; display:flex; flex-direction:column; padding:12px 8px; gap:8px; background:#f8fafc;">
+        <div style="width:40px;height:40px;border-radius:8px;background:#2563eb;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;">🧠</div>
+        <div class="placeholder" style="width:40px;height:40px;border-radius:8px;"></div>
+        <div class="placeholder" style="width:40px;height:40px;border-radius:8px;"></div>
+        <div class="placeholder" style="width:40px;height:40px;border-radius:8px;background:#2563eb20;"></div>
+        <div class="placeholder" style="width:40px;height:40px;border-radius:8px;"></div>
+      </div>
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <div class="mock-nav" style="padding:8px;">仪表盘</div>
+        <div class="mock-content" style="flex:1; padding:16px;">
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+            <div class="placeholder" style="height:60px;"></div>
+            <div class="placeholder" style="height:60px;"></div>
+            <div class="placeholder" style="height:60px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">桌面端 — Hover 展开（完整菜单）</div>
+    <div class="mockup-body" style="display:flex; height:260px;">
+      <div style="width:220px; flex-shrink:0; border-right:1px solid #e2e8f0; display:flex; flex-direction:column; padding:12px; gap:4px; background:#f8fafc;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;font-weight:600;font-size:13px;">🧠 AI 面试题库</div>
+        <div class="placeholder" style="height:36px;border-radius:8px;display:flex;align-items:center;padding:0 8px;font-size:12px;">📊 仪表盘</div>
+        <div class="placeholder" style="height:36px;border-radius:8px;display:flex;align-items:center;padding:0 8px;font-size:12px;">📚 题库</div>
+        <div class="placeholder" style="height:36px;border-radius:8px;display:flex;align-items:center;padding:0 8px;font-size:12px;background:#2563eb20;">➕ 新增题目</div>
+        <div class="placeholder" style="height:36px;border-radius:8px;display:flex;align-items:center;padding:0 8px;font-size:12px;">🧠 复习模式</div>
+      </div>
+      <div style="flex:1; background:#e2e8f020;"></div>
+    </div>
+  </div>
+</div>
+
+<h3>2. 移动端 — 底部 Tab Bar</h3>
+<div class="mockup" style="max-width:375px; margin:0 auto;">
+  <div class="mockup-header">iPhone 尺寸 (375px)</div>
+  <div class="mockup-body" style="display:flex; flex-direction:column; height:400px;">
+    <div class="mock-nav" style="padding:10px; font-size:14px; text-align:center;">📚 题库 (共 42 道)</div>
+    <div class="mock-content" style="flex:1; padding:12px; overflow-y:auto;">
+      <div class="placeholder" style="height:80px; margin-bottom:8px; border-radius:8px;"></div>
+      <div class="placeholder" style="height:80px; margin-bottom:8px; border-radius:8px;"></div>
+      <div class="placeholder" style="height:80px; margin-bottom:8px; border-radius:8px;"></div>
+    </div>
+    <div style="display:flex; border-top:1px solid #e2e8f0; padding:4px 8px; gap:4px; background:white;">
+      <div class="placeholder" style="flex:1; height:48px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px;">📊 仪表盘</div>
+      <div class="placeholder" style="flex:1; height:48px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px; background:#2563eb20;">📚 题库</div>
+      <div class="placeholder" style="flex:1; height:48px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px;">➕ 新增</div>
+      <div class="placeholder" style="flex:1; height:48px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px;">🧠 复习</div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 24px;">3. 各页面大屏布局策略</h3>
+
+<div class="cards">
+  <div class="card">
+    <div class="card-body">
+      <h3>仪表盘</h3>
+      <p>统计卡片 grid 自适应列数（3→4→5列）；每日一题 + 分类分布左右分栏（大屏）</p>
+      <p style="font-size:12px;color:var(--muted-foreground);">xl:grid-cols-4 | 2xl:grid-cols-5</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <h3>题库列表</h3>
+      <p>左侧题目列表 + 右侧题目详情面板（大屏点击题目后在右侧展示，无需跳转）</p>
+      <p style="font-size:12px;color:var(--muted-foreground);">xl:flex-row 分栏 | 移动端保持跳转</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <h3>复习模式</h3>
+      <p>居中单栏（最大阅读宽度），保证阅读体验</p>
+      <p style="font-size:12px;color:var(--muted-foreground);">max-w-3xl 居中 | 移动端全宽</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <h3>新增/编辑题目</h3>
+      <p>左侧 Markdown 编辑器 + 右侧实时预览（大屏分栏）</p>
+      <p style="font-size:12px;color:var(--muted-foreground);">xl:grid-cols-2 | 移动端上下排列</p>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:16px;color:var(--muted-foreground);">📐 以上布局策略确认后，我会进入详细设计文档。</p>

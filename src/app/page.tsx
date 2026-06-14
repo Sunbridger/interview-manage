@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-1">仪表盘</h1>
         <p className="text-sm text-muted-foreground">
@@ -20,7 +20,7 @@ export default function DashboardPage() {
       <StatsCards />
 
       {/* 快捷入口 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <QuickLink
           href="/questions"
           title="📚 浏览题库"
@@ -39,7 +39,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 每日一题 */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-6">
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-5 lg:p-6">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-lg">📅</span>
           <h2 className="font-semibold text-foreground">每日一题</h2>
@@ -62,12 +62,12 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="bg-white rounded-xl border border-border p-5 hover:shadow-md hover:border-primary/30 transition-all group"
+      className="bg-white rounded-xl border border-border p-4 lg:p-5 hover:shadow-md hover:border-primary/30 transition-all group"
     >
-      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1">
+      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors mb-1 text-sm lg:text-base">
         {title}
       </h3>
-      <p className="text-sm text-muted-foreground">{desc}</p>
+      <p className="text-xs lg:text-sm text-muted-foreground">{desc}</p>
     </Link>
   );
 }
@@ -133,4 +133,3 @@ function DailyQuestionContent() {
     </div>
   );
 }
-

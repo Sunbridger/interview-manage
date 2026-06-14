@@ -23,14 +23,14 @@ export default function NewQuestionPage() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-4 lg:space-y-6 max-w-full">
       <div>
-        <h1 className="text-2xl font-bold text-foreground mb-1">新增面试题</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-xl lg:text-2xl font-bold text-foreground mb-1">新增面试题</h1>
+        <p className="text-xs lg:text-sm text-muted-foreground">
           使用 Markdown 格式编写题目和答案
         </p>
       </div>
-      <div className="bg-white rounded-xl border border-border p-6">
+      <div className="bg-white rounded-xl border border-border p-4 lg:p-6">
         <QuestionForm onSubmit={handleSubmit} submitLabel="创建题目" />
       </div>
     </div>

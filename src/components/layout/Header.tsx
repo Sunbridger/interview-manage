@@ -21,9 +21,19 @@ export function Header() {
     return { href, label };
   });
 
+  const currentLabel =
+    breadcrumbs.length > 0
+      ? breadcrumbs[breadcrumbs.length - 1].label
+      : "仪表盘";
+
+  const isDetailPage =
+    segments.length >= 2 && !isNaN(Number(segments[segments.length - 1]));
+  const detailId = isDetailPage ? segments[segments.length - 1] : null;
+
   return (
-    <header className="h-14 border-b border-border bg-white flex items-center px-6 shrink-0">
-      <nav className="flex items-center gap-1.5 text-sm">
+    <header className="h-14 border-b border-border bg-white flex items-center px-4 lg:px-6 shrink-0">
+      {/* 桌面端面包屑 */}
+      <nav className="hidden sm:flex items-center gap-1.5 text-sm">
         {breadcrumbs.length === 0 ? (
           <span className="font-medium text-foreground">仪表盘</span>
         ) : (
@@ -43,6 +53,11 @@ export function Header() {
           ))
         )}
       </nav>
+
+      {/* 移动端简洁标题 */}
+      <span className="sm:hidden font-medium text-sm text-foreground">
+        {isDetailPage ? `${currentLabel} #${detailId}` : currentLabel}
+      </span>
     </header>
   );
 }

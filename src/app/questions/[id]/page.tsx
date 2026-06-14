@@ -68,7 +68,7 @@ export default function QuestionDetailPage({
 
   if (loading) {
     return (
-      <div className="max-w-4xl space-y-4">
+      <div className="max-w-4xl mx-auto space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-5 w-48" />
         <Skeleton className="h-48 w-full" />
@@ -88,7 +88,7 @@ export default function QuestionDetailPage({
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
       {/* 返回 + 操作 */}
       <div className="flex items-center justify-between">
         <Link
