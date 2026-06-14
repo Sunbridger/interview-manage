@@ -108,7 +108,7 @@ export function QuestionForm({
           </label>
           <select
             value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
+            onChange={(e) => setDifficulty(e.target.value as "easy" | "medium" | "hard")}
             className="w-full px-3 py-2.5 rounded-lg border border-border bg-white text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
           >
             {DIFFICULTY_OPTIONS.map((d) => (
