@@ -87,4 +87,4 @@ supabase/
 
 ## 部署
 
-本项目可直接部署到 [Vercel](https://vercel.com)，在 Vercel 项目设置中配置相同的环境变量即可。
+本项目可直接部署到 [Vercel](https://vercel.com/wangbenben-s-projects/interview-manage/deployments)，在 Vercel 项目设置中配置相同的环境变量即可。
