@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Category, Tag, QuestionFormData, QuestionWithRelations } from "@/lib/types";
 import { DIFFICULTY_OPTIONS } from "@/lib/constants";
 import MDEditor from "@uiw/react-md-editor";
+import { MarkdownRenderer } from "@/components/common/MarkdownRenderer";
 import { X } from "lucide-react";
 
 interface QuestionFormProps {
@@ -171,6 +172,13 @@ export function QuestionForm({
             onChange={(val) => setContent(val || "")}
             height={300}
             preview="live"
+            components={{
+              preview: (source: string) => (
+                <div className="p-4">
+                  <MarkdownRenderer content={source} />
+                </div>
+              ),
+            }}
           />
         </div>
       </div>
@@ -186,6 +194,13 @@ export function QuestionForm({
             onChange={(val) => setAnswer(val || "")}
             height={300}
             preview="live"
+            components={{
+              preview: (source: string) => (
+                <div className="p-4">
+                  <MarkdownRenderer content={source} />
+                </div>
+              ),
+            }}
           />
         </div>
       </div>
