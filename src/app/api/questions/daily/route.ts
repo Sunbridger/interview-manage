@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+export const dynamic = "force-dynamic";
+
 /**
  * 每日一题：基于日期 seed 伪随机选取
+ * 使用 count + offset 替代全表 ID 扫描
  */
 export async function GET() {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -13,26 +16,29 @@ export async function GET() {
     seed = (seed * 31 + today.charCodeAt(i)) & 0x7fffffff;
   }
 
-  // 获取所有题目 ID
-  const { data: ids, error } = await supabaseAdmin
+  // 获取总数（而非所有 ID）
+  const { count, error: countError } = await supabaseAdmin
     .from("questions")
-    .select("id");
+    .select("*", { count: "exact", head: true });
 
-  if (error || !ids || ids.length === 0) {
+  if (countError || !count) {
     return NextResponse.json({ error: "没有题目" }, { status: 404 });
   }
 
-  const index = seed % ids.length;
-  const dailyId = ids[index].id;
+  const offset = seed % count;
 
+  // 直接用 offset 取一条
   const { data, error: detailError } = await supabaseAdmin
     .from("questions")
-    .select(`*, category:categories(*), question_tags(tag:tags(*)), user_question_state(*)`)
-    .eq("id", dailyId)
+    .select(
+      `*, category:categories(*), question_tags(tag:tags(*)), user_question_state(*)`
+    )
+    .order("created_at", { ascending: false })
+    .range(offset, offset)
     .single();
 
-  if (detailError) {
-    return NextResponse.json({ error: detailError.message }, { status: 500 });
+  if (detailError || !data) {
+    return NextResponse.json({ error: detailError?.message || "获取失败" }, { status: 500 });
   }
 
   const item = data as Record<string, unknown>;
@@ -46,5 +52,13 @@ export async function GET() {
     daily_date: today,
   };
 
-  return NextResponse.json(formatted);
+  const response = NextResponse.json(formatted);
+
+  // 每天一换，CDN 缓存 1 小时
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=3600, stale-while-revalidate=60"
+  );
+
+  return response;
 }

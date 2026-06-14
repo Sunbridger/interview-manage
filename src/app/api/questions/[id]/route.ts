@@ -29,7 +29,15 @@ export async function GET(
     question_tags: undefined,
   };
 
-  return NextResponse.json(formatted);
+  const response = NextResponse.json(formatted);
+
+  // 题目详情短缓存
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=10, stale-while-revalidate=60"
+  );
+
+  return response;
 }
 
 export async function PUT(

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("categories")
@@ -11,5 +13,13 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  const response = NextResponse.json(data);
+
+  // 分类数据极少变动，CDN 缓存 1 小时，stale 24 小时
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=3600, stale-while-revalidate=86400"
+  );
+
+  return response;
 }

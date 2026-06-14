@@ -1,41 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * 随机一题：使用 count + offset 替代获取 ID 列表
+ */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const category = searchParams.get("category") || "";
   const difficulty = searchParams.get("difficulty") || "";
 
-  let query = supabaseAdmin
+  // 构建筛选条件获取总数
+  let countQuery = supabaseAdmin
     .from("questions")
-    .select("id")
-    .limit(100);
+    .select("*", { count: "exact", head: true });
 
   if (category) {
-    query = query.eq("category.slug", category);
+    countQuery = countQuery.eq("category.slug", category);
   }
   if (difficulty) {
-    query = query.eq("difficulty", difficulty);
+    countQuery = countQuery.eq("difficulty", difficulty);
   }
 
-  const { data: ids, error } = await query;
+  const { count, error: countError } = await countQuery;
 
-  if (error || !ids || ids.length === 0) {
+  if (countError || !count) {
     return NextResponse.json({ error: "没有符合条件的题目" }, { status: 404 });
   }
 
-  const randomIndex = Math.floor(Math.random() * ids.length);
-  const randomId = ids[randomIndex].id;
+  const randomOffset = Math.floor(Math.random() * count);
 
-  // 获取完整数据
-  const { data, error: detailError } = await supabaseAdmin
+  // 直接 offset 取一条
+  let dataQuery = supabaseAdmin
     .from("questions")
-    .select(`*, category:categories(*), question_tags(tag:tags(*)), user_question_state(*)`)
-    .eq("id", randomId)
+    .select(
+      `*, category:categories(*), question_tags(tag:tags(*)), user_question_state(*)`
+    );
+
+  if (category) {
+    dataQuery = dataQuery.eq("category.slug", category);
+  }
+  if (difficulty) {
+    dataQuery = dataQuery.eq("difficulty", difficulty);
+  }
+
+  const { data, error: detailError } = await dataQuery
+    .order("created_at", { ascending: false })
+    .range(randomOffset, randomOffset)
     .single();
 
-  if (detailError) {
-    return NextResponse.json({ error: detailError.message }, { status: 500 });
+  if (detailError || !data) {
+    return NextResponse.json({ error: detailError?.message || "获取失败" }, { status: 500 });
   }
 
   const item = data as Record<string, unknown>;
@@ -48,5 +64,13 @@ export async function GET(request: NextRequest) {
     question_tags: undefined,
   };
 
-  return NextResponse.json(formatted);
+  const response = NextResponse.json(formatted);
+
+  // 每次随机，短缓存
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=5, stale-while-revalidate=30"
+  );
+
+  return response;
 }
