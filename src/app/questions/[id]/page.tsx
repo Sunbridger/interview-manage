@@ -10,6 +10,9 @@ import { DifficultyBadge } from "@/components/common/DifficultyBadge";
 import { TagBadge } from "@/components/common/TagBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Star, CheckCircle2, Eye, EyeOff, Pencil, Trash2, ArrowLeft } from "lucide-react";
+import { AnnotationProvider } from "@/components/annotation/AnnotationProvider";
+import { AnnotatableAnswer } from "@/components/annotation/AnnotatableAnswer";
+import { AnnotationSidebar } from "@/components/annotation/AnnotationSidebar";
 
 export default function QuestionDetailPage({
   params,
@@ -149,35 +152,43 @@ export default function QuestionDetailPage({
         <MarkdownRenderer content={question.content || "暂无题目描述"} />
       </div>
 
-      {/* 答案区域 */}
-      <div className="bg-white rounded-xl border border-border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-foreground">✅ 参考答案</h2>
-          <button
-            onClick={() => setShowAnswer(!showAnswer)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
-          >
-            {showAnswer ? (
-              <>
+      {/* 答案区域 — 批注模式 */}
+      {showAnswer ? (
+        <AnnotationProvider questionId={id}>
+          <div className="bg-white rounded-xl border border-border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-foreground">✅ 参考答案</h2>
+              <button
+                onClick={() => setShowAnswer(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+              >
                 <EyeOff className="w-3.5 h-3.5" />
                 隐藏答案
-              </>
-            ) : (
-              <>
-                <Eye className="w-3.5 h-3.5" />
-                显示答案
-              </>
-            )}
-          </button>
-        </div>
-        {showAnswer ? (
-          <MarkdownRenderer content={question.answer || "暂无参考答案"} />
-        ) : (
+              </button>
+            </div>
+            <div className="pl-10">
+              <AnnotatableAnswer content={question.answer || "暂无参考答案"} />
+            </div>
+          </div>
+          <AnnotationSidebar />
+        </AnnotationProvider>
+      ) : (
+        <div className="bg-white rounded-xl border border-border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-foreground">✅ 参考答案</h2>
+            <button
+              onClick={() => setShowAnswer(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              显示答案
+            </button>
+          </div>
           <p className="text-sm text-muted-foreground italic">
             点击「显示答案」查看参考答案
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 操作按钮 */}
       <div className="flex items-center gap-3">

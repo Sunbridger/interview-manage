@@ -153,3 +153,17 @@ SELECT
   (SELECT id FROM categories WHERE slug = 'rag'),
   'medium'
 WHERE NOT EXISTS (SELECT 1 FROM questions WHERE title = 'RAG（检索增强生成）的核心流程是什么？');
+
+-- ============================================
+-- 批注表
+-- ============================================
+CREATE TABLE IF NOT EXISTS annotations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  question_id UUID NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
+  block_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_annotations_question ON annotations(question_id);
