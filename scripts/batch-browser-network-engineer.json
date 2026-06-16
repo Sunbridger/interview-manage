@@ -1,0 +1,197 @@
+[
+  {
+    "title": "从输入 URL 到页面渲染的完整过程",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "浏览器",
+      "网络",
+      "渲染"
+    ],
+    "content": "## 题目\n请分步骤描述从输入URL到页面渲染过程中，每个阶段做的事情：DNS解析→TCP握手→TLS握手→HTTP请求→解析HTML→构建DOM/CSSOM→布局→绘制→合成。重点关注：1.每个阶段可能的性能瓶颈是什么？2.HTTP/2的多路复用如何改变这个流程？3.preload scanner如何加速资源发现？",
+    "answer": "完整流程：1)DNS解析(递归查询→缓存，预解析link dns-prefetch) 2)TCP三次握手(SYN→SYN-ACK→ACK) 3)TLS握手(1.5RTT) 4)HTTP请求+响应(HPACK头部压缩) 5)HTML解析→DOM树(遇到CSS阻塞render、async/defer脚本不同行为) 6)CSSOM构建(CSS阻塞渲染但不阻塞DOM构建) 7)渲染树(Render Tree = DOM+CSSOM合并) 8)Layout(计算每个节点几何位置) 9)Paint(生成绘制指令) 10)Composite(合成图层，GPU处理)。Preload scanner：HTML解析中提前扫描src/href属性并发起资源请求，不等待解析到对应标签。HTTP/2：单连接多Stream并发，消除HTTP/1.x的6连接限制和队头阻塞。"
+  },
+  {
+    "title": "回流（Reflow）与重绘（Repaint）的触发与优化",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "浏览器",
+      "回流",
+      "重绘"
+    ],
+    "content": "## 题目\n1.哪些操作会触发回流？哪些只触发重绘？\n2.如何用浏览器的Layout Trashing概念理解读写交替导致的强制同步布局？\n3.fastdom库的解决方案原理是什么？\n4.以下代码有什么性能问题：el.style.width = el.offsetWidth + 1 + 'px'; el.style.height = el.offsetHeight + 1 + 'px';",
+    "answer": "回流触发：修改几何属性(width/height/margin/position/display)、改变DOM结构、获取offsetWidth/scrollTop等（浏览器需要立即计算最新布局→强制同步布局）。重绘触发：修改color/background/visibility等非几何属性。Layout Thrashing：交替读(强制layout)→写(使layout失效)→读(再次强制layout)，导致多次不必要的重排。fastdom方案：将读和写分别批量排队，先全部读取再全部写入。代码问题：每次读offset触发强制同步布局，两次读写交替导致两次layout，应batch读取后再batch写入。"
+  },
+  {
+    "title": "V8 引擎的 Hidden Class 与内联缓存",
+    "difficulty": "hard",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "V8",
+      "性能优化"
+    ],
+    "content": "## 题目\nV8如何通过Hidden Class（Map）优化属性访问？为什么动态添加属性会破坏优化（去优化→字典模式）？内联缓存（Inline Cache）如何让属性访问接近C语言速度？以下代码为什么第二个循环比第一个慢很多？\n\n// 循环1\nfor (const o of arr) { o.x = 1; o.y = 2; }\n// 循环2\nfor (const o of arr) { o.x = 1; o.y = 2; o.z = 3; }\n// 循环3\nfor (const o of arr) { o.y = 2; o.x = 1; }",
+    "answer": "Hidden Class(Map)是V8跟踪对象形状(shape)的元结构。相同属性顺序的对象共享同一个Map→属性访问是固定偏移量读取（非哈希查找）。动态添加属性创建新的Map(transition chain)，若属性顺序不一致则分裂Map链(多态/超态)→降级为字典模式(哈希查找)。IC：在字节码层面缓存上次找到的属性偏移量，下次同Map直接偏移读取。循环1：所有对象同Map(先x后y)→单态IC最快。循环2：z的添加破坏Map一致性→多态。循环3：不同顺序导致不同Map链→去优化。最佳实践：构造器中一次性定义所有属性，属性顺序保持一致。"
+  },
+  {
+    "title": "跨域方案全景：CORS / JSONP / postMessage / 代理",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "跨域",
+      "CORS",
+      "postMessage"
+    ],
+    "content": "## 题目\nCORS的简单请求和预检请求（preflight）的触发条件？withCredentials:true时Access-Control-Allow-Origin为什么不能是*？JSONP的原理和安全隐患？postMessage跨窗口通信如何保证安全（origin校验+事件源验证）？Nginx反向代理跨域 vs CORS的实际选择？",
+    "answer": "预检触发条件：非简单方法(PUT/DELETE/PATCH)、自定义Content-Type(非form/text/urlencoded)、自定义Header。withCredentials:true需要Access-Control-Allow-Credentials:true，且ACAO不能是*(规范禁止，安全原因)。JSONP：动态创建script标签，URL带callback参数，服务端返回callback(data)。安全隐患：完全信任第三方脚本(可执行任意JS)，仅限GET，无错误处理。postMessage安全：始终校验event.origin（白名单），校验event.source，结构化克隆数据。Nginx代理：绕过浏览器同源策略(同域)，但增加服务器流量(CORS由浏览器处理)。内网服务用Nginx，公开API用CORS。"
+  },
+  {
+    "title": "浏览器缓存策略：强缓存/协商缓存/Service Worker",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "缓存",
+      "Service Worker",
+      "HTTP"
+    ],
+    "content": "## 题目\n强缓存(Cache-Control/Expires)和协商缓存(ETag/Last-Modified)的区别及优先级？Cache-Control的public/private/no-cache/no-store/immutable各是什么意思？Service Worker缓存可以做到哪些HTTP缓存做不到的事？如何设计\"离线可用\"的缓存策略？stale-while-revalidate的适用场景？",
+    "answer": "强缓存：不发请求，直接从(disk/memory cache)取(Cache-Control:max-age、Expires)。协商缓存：发请求带If-None-Match/If-Modified-Since，304表示未修改(ETag/Last-Modified)。优先级：强缓存>协商缓存(must-revalidate绕过强缓存)。public:CDN可缓存。private:仅浏览器。no-cache:每次验证(协商)。no-store:完全不缓存。immutable:永不变化(指纹文件名配合使用)。SW可做：离线访问、后台同步、推送通知、请求拦截和修改、自定义缓存策略(比HTTP缓存灵活得多)。离线策略：Cache-First(静态资源)→Network-First(API)→Network-Only(实时数据)→Stale-While-Revalidate(先返回缓存再后台更新)。"
+  },
+  {
+    "title": "HTTP/2 多路复用 vs HTTP/1.1 队头阻塞 vs HTTP/3 QUIC",
+    "difficulty": "hard",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "HTTP/2",
+      "HTTP/3",
+      "QUIC"
+    ],
+    "content": "## 题目\nHTTP/1.1的队头阻塞(Head-of-Line Blocking)是怎么回事？HTTP/2用什么机制解决了(Stream+Frame)？HTTP/2的TCP层队头阻塞是什么意思？HTTP/3 QUIC如何彻底解决？HPACK vs QPACK头部压缩的区别？",
+    "answer": "HTTP/1.1 HOLB：同一连接上请求必须按序响应，前一响应阻塞后续。HTTP/2解决：单TCP连接上多Stream并发，每个Stream切为Frame交错传输。但TCP层HOLB：TCP丢失一个包阻塞所有Stream(因为TCP保证按序交付)。HTTP/3 QUIC：基于UDP，每个Stream独立传输，丢包只影响单个Stream。HPACK(HTTP/2)：动态表需要严格按序解码→与TCP绑定。QPACK(HTTP/3)：动态表更新与Stream解耦，避免HOLB。QUIC额外优势：0-RTT握手(TLS1.3集成在QUIC中)、连接迁移(切换网络IP不变)。"
+  },
+  {
+    "title": "WebSocket 心跳机制与重连策略",
+    "difficulty": "medium",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "WebSocket",
+      "心跳",
+      "重连"
+    ],
+    "content": "## 题目\n为什么WebSocket需要心跳？ping/pong帧在协议层如何工作的？设计一个健壮的WebSocket重连机制：1)指数退避(1s→2s→4s→...max 30s) 2)页面不可见时暂停重连 3)网络恢复后自动重连。如何处理重连期间丢失的消息（消息队列/seq号确认）？",
+    "answer": "心跳目的：1)检测连接存活(中间代理可能静默断开) 2)保持NAT/防火墙映射不过期。WS协议层ping帧(0x9)和pong帧(0xA)由浏览器自动处理。重连设计：delay = min(initialDelay * 2^retries + jitter, maxDelay)。Page Visibility API监听visibilitychange→不可见时停止重连节省资源。navigator.onLine + online/offline事件监听网络状态变化。消息丢失处理：客户端维护seq号(最近一条已确认)，重连时发送lastSeq，服务端补推丢失消息。或本地IndexedDB离线队列。"
+  },
+  {
+    "title": "RESTful vs GraphQL vs tRPC 的选型",
+    "difficulty": "medium",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "API设计",
+      "REST",
+      "GraphQL",
+      "tRPC"
+    ],
+    "content": "## 题目\nREST的over-fetching/under-fetching是什么？GraphQL如何通过声明式查询解决？tRPC的核心价值（端到端类型安全）是什么？三者在以下场景如何选型：1)B端管理后台 2)移动App API 3)内部微服务间通信 4)第三方开放API？",
+    "answer": "REST：一个/GET /users返回所有字段(over-fetching)，关联数据需多请求(under-fetching)。GraphQL：客户端指定字段，一次请求返回精准数据。tRPC：前后端共享TS类型，编译时保证API契约，无需生成SDK。选型：B端→tRPC(内部项目类型安全最大化)。移动App→GraphQL(灵活的字段选择节省流量)。微服务→tRPC或gRPC(强类型+高性能)。开放API→REST(生态成熟、文档工具丰富、缓存友好、无学习成本)。"
+  },
+  {
+    "title": "请求合并与去重：实现一个通用的请求管理器",
+    "difficulty": "hard",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "请求合并",
+      "去重",
+      "缓存"
+    ],
+    "content": "## 题目\n实现一个通用的请求管理器，支持以下特性：\n1.请求去重：同一个API在同一时刻被多处调用，只发一次请求\n2.请求合并：100ms内的多次调用合并为一次批量请求\n3.缓存策略：可配置TTL + stale-while-revalidate\n4.请求取消：组件卸载时自动取消对应的pending请求\n请写出核心实现代码。",
+    "answer": "不同场景用不同技术：去重(同参数同时间)→用Map<key, Promise>存inflight请求，后续调用直接返回同一Promise。合并→buffer + debounce 100ms + Promise批量resolve。SWR(stale-while-revalidate)→返回缓存数据→后台fetch更新缓存。请求取消→AbortController + signal，组件卸载时abort()。\n\n核心代码：class RequestManager { inflight=new Map(); cache=new Map(); async fetch(key, fetcher, options) { const cached = this.cache.get(key); if (cached && !cached.stale) return cached.data; const inflight = this.inflight.get(key); if (inflight) return inflight; const p = fetcher().then(r=>{this.cache.set(key,{data:r,ts:Date.now()});return r}).finally(()=>this.inflight.delete(key)); this.inflight.set(key, p); return p; } }"
+  },
+  {
+    "title": "如何设计一个前端 API 层的错误处理与重试体系？",
+    "difficulty": "medium",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "API",
+      "错误处理",
+      "重试"
+    ],
+    "content": "## 题目\n前端API层错误处理的分层策略：网络错误(Network Error) vs 业务错误(Business Error) vs 认证错误(Auth Error)分别如何处理？重试策略：什么错误该重试什么不该？如何实现全局错误拦截器+局部错误覆盖？如何设计统一的错误码枚举和用户提示文案映射？",
+    "answer": "分层：网络错误(retryable，fetch自身catch)→业务错误(后端返回error code，不重试，展示提示)→认证错误(401→refreshToken重试一次→失败跳登录)。重试规则：GET/HEAD可重试(幂等)，POST慎重重试(可能重复创建)，5xx可重试(服务端临时故障)，4xx不重试(客户端错误)。全局拦截器(请求/响应拦截器+错误码映射表)+ 局部覆盖(请求options中errorHandler)。错误码体系：errorCode(程序用) + message(默认文案) + userMessage(用户可见)。统一Toast/Modal展示。"
+  },
+  {
+    "title": "从零搭建前端脚手架的设计思路",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "脚手架",
+      "CLI",
+      "构建工具"
+    ],
+    "content": "## 题目\n如何从零设计一个前端脚手架(create-xxx-app)？需要考虑：模板管理(如何支持多个模板)、版本管理(如何检测更新)、交互式CLI(如何用inquirer做选择)、包管理器检测(自动选npm/pnpm/yarn)、安装后的提示(postinstall message)。选择一个你熟悉的实现方式描述核心流程。",
+    "answer": "核心流程：1)bin入口(map到dist/cli.js) 2)commander/yargs解析命令行 3)inquirer交互式问答(项目名/模板/功能选项) 4)模板下载：从GitHub release下载tar.gz或git clone模板仓库(degit) 5)动态替换模板中占位符(项目名/作者/版本) 6)自动检测包管理器(检查lock文件或user-agent) 7)spinner动画显示进度 8)postinstall提示(下一步命令+文档链接)。版本检查：用update-notifier(对比npm registry上latest版本)。模板管理：templates/目录下多模板+template.json描述文件。"
+  },
+  {
+    "title": "AST 在代码转换中的应用：Babel 插件原理",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "AST",
+      "Babel",
+      "编译器"
+    ],
+    "content": "## 题目\nBabel的编译流程(parse→transform→generate)各阶段做什么？如何写一个Babel插件：实现将console.log替换为自定义logger.log(附带文件名和行号)？为什么import语句不能被转换成CJS的require后还保留ESM特性？Babel和esbuild在AST处理上有何本质区别(修改AST vs 生成新AST)？",
+    "answer": "Babel流程：parse(@babel/parser生成AST)→transform(遍历AST，visitor模式匹配Node，操作path.replaceWith等)→generate(@babel/generator AST→代码)。插件核心：export default function({ types:t }) { return { visitor: { CallExpression(path){ if(isConsoleLog(path)) path.replaceWith(t.callExpression(t.memberExpression(t.identifier('logger'),t.identifier('log')), path.node.arguments)); }}};}。Babel修改原AST(操作path)，esbuild和swc生成全新AST(不可变，更高效)。import转换问题：import有live binding、hoisting、静态分析等特性，CJS require只是简单的值拷贝和运行时加载，语义不等价。"
+  },
+  {
+    "title": "Monorepo 架构：pnpm workspace + turborepo 最佳实践",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "Monorepo",
+      "pnpm",
+      "turborepo"
+    ],
+    "content": "## 题目\nMonorepo解决了多包管理的哪些痛点？pnpm的硬链接+符号链接与npm/yarn的node_modules结构有何区别(幽灵依赖问题)？turborepo的缓存策略(turbo.json中的pipeline与dependsOn)如何做到增量构建？Nx和turborepo各有什么优劣？如何在Monorepo中管理共享配置(tsconfig/eslint/prettier)？",
+    "answer": "Monorepo解决：跨包代码共享(workspace:*)、统一版本管理、原子化跨包变更、统一工具链。pnpm：全局store硬链接→node_modules符号链接，所有依赖物理上只存一份。幽灵依赖：npm/yarn的扁平化导致可以访问未声明的依赖；pnpm严格遵循依赖树，未声明则不可访问。turborepo：pipeline配置任务依赖关系，dependsOn声明上游任务，outputs定义缓存文件，远程缓存实现CI间共享。管理共享配置：packages/config下eslint-config/tsconfig等包，各子包extends引用。Nx更重量级(插件生态更丰富)，turborepo更轻量。"
+  },
+  {
+    "title": "前端错误监控与日志体系设计",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "错误监控",
+      "Sentry",
+      "日志"
+    ],
+    "content": "## 题目\n设计一套前端错误监控系统：\n1.如何捕获JS错误(window.onerror)、Promise错误(unhandledrejection)、资源加载错误、React ErrorBoundary？\n2.错误信息中需要包含哪些上下文(用户行为栈/网络请求/设备信息)？SourceMap如何部署(注意安全)？\n3.如何区分误告警和真错误？错误去重(指纹)策略？\n4.日志的采样策略(全量vs采样)和敏感信息脱敏？",
+    "answer": "捕获策略：window.onerror(JS运行时错误+堆栈)、window.addEventListener('unhandledrejection')、document.addEventListener('error',capture:true)资源加载错误、ErrorBoundary(React组件树错误)。上下文：用户行为录制(点击/输入快照)、最近5次请求、设备信息(UA/screen/network)、页面状态(redux store快照，注意脱敏)。SourceMap：上传到Sentry等私有服务(非公开CDN)，publicPath指向私有域名加token。去重：错误类型+堆栈前N行的hash作为指纹。误告警：第三方脚本错误(正则过滤)、浏览器扩展注入的错误。采样：随机采样(10%)按错误类型，保证同类型错误被采样到。脱敏：手机号/身份证号/银行卡用正则替换为***。"
+  },
+  {
+    "title": "自动化测试策略：单元/集成/E2E 的投入产出比",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "单元测试",
+      "E2E"
+    ],
+    "content": "## 题目\n测试金字塔(单元→集成→E2E)的含义和合理比例？什么代码适合单元测试，什么必须E2E覆盖？前端单元测试中mock的边界（mock API vs mock 组件 vs mock 模块）？如何用Testing Library做可访问性驱动的组件测试？快照测试(snapshot testing)的利弊？",
+    "answer": "金字塔：大量单元测试(快速、稳定、定位精准)→适量集成测试(验证模块交互)→少量E2E(验证核心用户旅程)。比例参考：70%单元+20%集成+10%E2E。纯函数/工具→单元。组件交互→集成(Testing Library render+fireEvent+expect)。核心流程(登录/支付)→E2E(Playwright/Cypress)。mock边界：API用MSW(拦截网络层而非mock函数)、避免mock组件内部实现(测试行为不测试实现)。快照：初始开发快照快速回归UI，但容易被无脑更新、过大的快照不可读。建议：小快照+inline snapshot+语义化自定义序列化器。"
+  }
+]

@@ -1,0 +1,156 @@
+[
+  {
+    "title": "闭包（Closure）的原理是什么？它会导致内存泄漏吗？如何排查和修复？",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "闭包",
+      "内存泄漏",
+      "垃圾回收"
+    ],
+    "content": "## 题目\n\n1. 解释 JavaScript 闭包的底层原理（词法作用域 + 执行上下文 + 作用域链）。\n2. 闭包在什么场景下会导致内存泄漏？请给出一个具体例子。\n3. 如何使用 Chrome DevTools 排查闭包引起的内存泄漏？有哪些修复手段？\n4. 以下代码有什么问题：\n\n```javascript\nfunction createButtons() {\n  for (var i = 0; i < 5; i++) {\n    const btn = document.createElement('button');\n    btn.textContent = 'Button ' + i;\n    btn.onclick = function() { console.log(i); };\n    document.body.appendChild(btn);\n  }\n}\n```",
+    "answer": "## 闭包原理\n\n闭包 = 函数 + 其词法环境的引用。当内部函数被返回或传递到外部时，它仍然持有对外部作用域变量的引用，这些变量不会被 GC 回收。\n\nV8 层面：每个函数有一个 [[Scopes]] 内部属性，指向 Closure 对象，该对象持有捕获的外部变量。\n\n## 内存泄漏场景\n\n```javascript\n// 典型泄漏：大对象被闭包引用，无法释放\nfunction createLeak() {\n  const largeData = new Array(10000000).fill('leak');\n  return function() {\n    console.log(largeData.length); // largeData 永远不会被 GC\n  };\n}\nconst fn = createLeak(); // fn 持有 largeData 引用\n```\n\n## DevTools 排查\n\n1. Memory 面板 → Heap Snapshot → 搜索 \"closure\"\n2. 对比操作前后的 Snapshot，查看 Delta 增量\n3. 关注 Detached DOM 节点（被闭包引用的已移除 DOM）\n\n## 修复手段\n- 及时解除引用：将闭包变量置 null\n- 使用 WeakMap 存储可 GC 的关联数据\n- 限制闭包捕获的范围（只捕获需要的变量）\n- 使用 let/const 替代 var（块级作用域不共享）\n\n## var 经典陷阱\n上述代码所有按钮都打印 5。因为 var 是函数作用域，所有闭包共享同一个 i。修复：var 改 let（块级作用域每次迭代创建新的绑定）。"
+  },
+  {
+    "title": "JavaScript 原型链继承与 ES6 class 继承的底层区别是什么？",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "原型链",
+      "继承",
+      "class"
+    ],
+    "content": "## 题目\n\n1. 画出以下代码的原型链图：\n\n```javascript\nfunction Animal(name) { this.name = name; }\nAnimal.prototype.speak = function() { console.log(this.name); };\n\nfunction Dog(name, breed) {\n  Animal.call(this, name);\n  this.breed = breed;\n}\nDog.prototype = Object.create(Animal.prototype);\nDog.prototype.constructor = Dog;\nDog.prototype.bark = function() { console.log('Woof!'); };\n\nconst d = new Dog('Rex', 'Husky');\n```\n\n2. ES6 class extends 编译成 ES5 后做了什么？super 关键字是如何实现的？\n3. 为什么 `typeof null === 'object'`？这与原型链有什么关系？",
+    "answer": "## 原型链图\n\n```\nd.__proto__ → Dog.prototype\nDog.prototype.__proto__ → Animal.prototype\nAnimal.prototype.__proto__ → Object.prototype\nObject.prototype.__proto__ → null\n\nDog.__proto__ → Function.prototype\nAnimal.__proto__ → Function.prototype\nFunction.prototype.__proto__ → Object.prototype\n```\n\n## class extends 编译\n\nES6 class 编译为 ES5 核心步骤：\n1. 创建构造函数（使用 _createClass 定义方法）\n2. _inherits(Dog, Animal)：设置 Dog.prototype = Object.create(Animal.prototype)，设置 Dog.__proto__ = Animal（静态方法继承）\n3. super() 编译为 Animal.call(this)，但通过 _possibleConstructorReturn 处理返回值的包装\n\n关键区别：class 的 Dog.__proto__ 直接指向 Animal（继承静态方法），而 ES5 手动实现通常漏掉这一步。\n\n## typeof null\n\nJS 底层用低位标记类型：对象=000，整数=1，浮点=010，字符串=100，布尔=110。null 全为 0（0x00），被错误识别为对象。这是 JS 诞生之初的设计错误，无法修复（破坏兼容性）。实际上 null 是基本类型，表示\"空对象引用\"。"
+  },
+  {
+    "title": "this 的四种绑定规则及箭头函数的特殊性",
+    "difficulty": "easy",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "this",
+      "箭头函数",
+      "apply/call/bind"
+    ],
+    "content": "## 题目\n\n1. 解释 this 的四种绑定优先级（new > 显式 > 隐式 > 默认）。\n2. 箭头函数的 this 有什么特殊行为？它与普通函数在 this 绑定上有何本质区别？\n3. call、apply、bind 三者的区别？如何手写一个 bind？\n4. 以下代码输出什么：\n\n```javascript\nconst obj = {\n  name: 'obj',\n  getName: () => { console.log(this.name); },\n  getName2: function() { console.log(this.name); }\n};\nobj.getName();\nobj.getName2();\nnew obj.getName2();\n```",
+    "answer": "## this 四种绑定\n\n优先级从高到低：\n1. **new 绑定**：new fn() → this 指向新创建的对象\n2. **显式绑定**：fn.call/apply/bind(obj) → this 指向 obj\n3. **隐式绑定**：obj.fn() → this 指向 obj（调用者）\n4. **默认绑定**：fn() → 严格模式 undefined，非严格模式 window\n\n## 箭头函数 this\n\n箭头函数没有自己的 this，它的 this 在**定义时**从外层作用域捕获（词法 this）。一旦定义不可改变——call/apply/bind 对箭头函数无效。\n\n## call/apply/bind 区别\n\n- call(obj, arg1, arg2)：逐个传参，立即执行\n- apply(obj, [arg1, arg2])：数组传参，立即执行\n- bind(obj, arg1, arg2)：返回新函数，不立即执行，可柯里化\n\n```javascript\n// 手写 bind\nFunction.prototype.myBind = function(context, ...args) {\n  const fn = this;\n  return function bound(...innerArgs) {\n    // new 调用优先\n    return fn.apply(this instanceof bound ? this : context, args.concat(innerArgs));\n  };\n};\n```\n\n## 代码输出\n- obj.getName()：箭头函数，定义时外层 this 可能是 window/undefined → undefined\n- obj.getName2()：隐式绑定 → 'obj'\n- new obj.getName2()：new 绑定 > 隐式绑定 → 空对象"
+  },
+  {
+    "title": "手写 Promise.all / Promise.race / Promise.allSettled 并解释错误处理策略",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Promise",
+      "async",
+      "错误处理"
+    ],
+    "content": "## 题目\n\n1. 手写 Promise.all、Promise.race、Promise.allSettled、Promise.any。\n2. 这四种并发方法各适用于什么业务场景？\n3. Promise.all 中一个请求失败了，如何让其他请求不丢失结果？\n4. 如何实现一个带有并发限制的 Promise 池（如最多同时 3 个请求）？",
+    "answer": "## 手写实现\n\n```javascript\n// Promise.all\nPromise.myAll = function(promises) {\n  return new Promise((resolve, reject) => {\n    const results = [];\n    let count = 0;\n    promises.forEach((p, i) => {\n      Promise.resolve(p).then(val => {\n        results[i] = val;\n        if (++count === promises.length) resolve(results);\n      }, reject); // 任一失败立即 reject\n    });\n  });\n};\n\n// Promise.allSettled（全部完成后返回，包含 fulfilled/rejected 状态）\nPromise.myAllSettled = function(promises) {\n  return Promise.all(promises.map(p =>\n    Promise.resolve(p).then(\n      value => ({ status: 'fulfilled', value }),\n      reason => ({ status: 'rejected', reason })\n    )\n  ));\n};\n\n// 并发限制池\nasync function asyncPool(limit, tasks, fn) {\n  const ret = [];\n  const executing = new Set();\n  for (const task of tasks) {\n    const p = Promise.resolve().then(() => fn(task));\n    ret.push(p);\n    executing.add(p);\n    const clean = () => executing.delete(p);\n    p.then(clean, clean);\n    if (executing.size >= limit) {\n      await Promise.race(executing); // 等待至少一个完成\n    }\n  }\n  return Promise.all(ret);\n}\n```\n\n## 业务场景\n- all：并行请求，全部成功才继续（表单多字段校验）\n- race：超时控制（Promise.race([fetch, timeout])）\n- allSettled：批量操作，需要知道每个结果（批量发邮件）\n- any：获取最快成功的（多 CDN 降级）\n\n## 容错\nPromise.all 推荐用 allSettled 替代，或给每个 promise 加 catch：\n```javascript\nPromise.all(promises.map(p => p.catch(err => ({ error: err }))));\n```"
+  },
+  {
+    "title": "深入 Generator 函数和 async/await 的本质联系",
+    "difficulty": "hard",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Generator",
+      "async/await",
+      "协程"
+    ],
+    "content": "## 题目\n\n1. Generator 函数的执行模型是怎样的？yield 和 next() 之间如何双向传递数据？\n2. 如何用 Generator + Promise 实现一个 async/await 的模拟版本？\n3. async/await 相比 Generator + co 库，在错误处理和调试体验上有什么优势？\n4. 异步迭代器（for await...of）的原理是什么？它解决了什么实际问题（如分页流式数据处理）？",
+    "answer": "## Generator 执行模型\n\nGenerator 是一个状态机，yield 将函数暂停，next() 恢复执行。每次调用 next() 返回 { value, done }，next(arg) 的 arg 可以作为上一个 yield 的返回值（双向通信）。\n\n## 模拟 async/await\n\n```javascript\nfunction asyncToGenerator(fn) {\n  return function(...args) {\n    const gen = fn.apply(this, args);\n    return new Promise((resolve, reject) => {\n      function step(key, arg) {\n        try {\n          const { value, done } = gen[key](arg);\n          if (done) return resolve(value);\n          Promise.resolve(value).then(\n            val => step('next', val),\n            err => step('throw', err)\n          );\n        } catch (err) { reject(err); }\n      }\n      step('next');\n    });\n  };\n}\n```\n\n核心：递归调用 gen.next()，每次拿到 value 后用 Promise.resolve 包装，.then 后继续递归。这本质上就是 co 库的实现思路。\n\n异步迭代器：\n```javascript\nasync function* paginatedFetch(url) {\n  let page = 1;\n  while (true) {\n    const res = await fetch(`${url}?page=${page}`);\n    if (res.status === 204) break;\n    yield res.json();\n    page++;\n  }\n}\n\nfor await (const page of paginatedFetch('/api/data')) {\n  console.log(page); // 逐页处理，内存友好\n}\n```\n\n异步迭代器的 Symbol.asyncIterator 返回 { next(): Promise<{value, done}> }，运行时可以自动 await。适合分页数据、流式文件读取等场景。"
+  },
+  {
+    "title": "JavaScript 模块化演进：IIFE → CJS → AMD → ESM → Module Federation",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "模块化",
+      "ESM",
+      "CommonJS"
+    ],
+    "content": "## 题目\n\n1. 简述 JS 模块化的演进历程和每个阶段的痛点。\n2. ESM 的静态导入与 CJS 的动态导入在运行时有何根本区别？为什么 ESM 支持 Tree Shaking 而 CJS 不行？\n3. `import` 语句会被提升吗？循环引用在 ESM 和 CJS 中分别如何处理？\n4. Module Federation 2.0（基于 ESM）相比 1.0（基于 Webpack）有什么本质改进？",
+    "answer": "## 模块化演进\n\n1. IIFE（立即执行函数）：避免全局污染，但无依赖管理，顺序依赖手工维护。\n2. CJS（Node.js）：同步加载，适合服务端。module.exports + require()。运行时动态加载，无法 Tree Shaking。\n3. AMD（浏览器异步加载）：define + require，适合浏览器。但写法啰嗦。\n4. UMD：兼容 CJS + AMD + 全局变量。if-else 判断环境。\n5. ESM（ES2015）：静态导入导出，编译时分析依赖图，支持 Tree Shaking。顶层 await（ES2022）。\n\n## 核心区别\n\n| | ESM | CJS |\n|---|---|----|\n| 时机 | 编译时确定依赖 | 运行时加载 |\n| 导出 | 值的**引用**（live binding） | 值的**拷贝** |\n| Tree Shaking | 支持（静态分析） | 不支持 |\n| 顶层 this | undefined | module.exports |\n| 循环引用 | 不会阻塞（引用已提升但值可能未初始化） | 返回当前已执行的 exports |\n\n## import 提升\nimport 声明在编译阶段提升到模块顶部，先于任何代码执行。这是规范强制行为，所有浏览器和打包工具都遵循。\n\n## Module Federation 2.0\n基于浏览器原生 ESM + import maps，无需构建时打包即可运行时共享模块。优势：原生支持（零运行时开销）、与 HTTP 缓存天然兼容、安全性更好（CORS + CSP）。1.0 依赖 Webpack runtime 做模块联邦，增加了额外代码量和加载复杂度。"
+  },
+  {
+    "title": "WeakMap 和 WeakSet 有什么独特的应用场景？",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "WeakMap",
+      "WeakSet",
+      "内存管理"
+    ],
+    "content": "## 题目\n\n1. WeakMap 和 Map 的核心区别是什么？为什么 WeakMap 不可迭代？\n2. 举例说明 WeakMap 的 3 个实际应用场景（不能只说\"缓存\"，要具体）。\n3. WeakRef 和 FinalizationRegistry 是 ES2021 的新特性，它们适合在什么场景使用？有什么注意事项？",
+    "answer": "## 核心区别\n\nWeakMap 的 key 必须是对象，且对 key 的引用是弱引用——如果 key 对象在其他地方没有引用，GC 可以回收它，WeakMap 中的对应条目自动消失。因此 WeakMap 不可迭代（因为条目随时可能消失，迭代结果不可预测）。\n\n## 三个实际应用场景\n\n1. **DOM 节点元数据存储**：给 DOM 元素关联业务数据，当元素从页面移除后自动释放，避免手动清理。\n```javascript\nconst metadataMap = new WeakMap();\nfunction bindData(el, data) {\n  metadataMap.set(el, data);\n}\n// el.remove() 后，对应 metadata 自动被 GC\n```\n\n2. **私有属性**：用 WeakMap 存储类实例的私有数据，外部无法访问且随实例销毁自动清理。\n```javascript\nconst _counter = new WeakMap();\nclass MyClass {\n  constructor() { _counter.set(this, 0); }\n  increment() { _counter.set(this, _counter.get(this) + 1); }\n}\n```\n\n3. **请求去重缓存**：\n```javascript\nconst inflight = new WeakMap();\nasync function dedupeFetch(key, fetcher) {\n  if (inflight.has(key)) return inflight.get(key);\n  const p = fetcher();\n  inflight.set(key, p);\n  const result = await p;\n  inflight.delete(key); // 请求完成即释放\n  return result;\n}\n```\n\n## WeakRef & FinalizationRegistry\n\nWeakRef：创建对对象的弱引用，可通过 .deref() 获取（可能返回 undefined）。适用场景：大对象缓存（不阻止 GC）。\n\nFinalizationRegistry：注册 GC 回调，对象被回收时触发。适用场景：清理外部资源（如关闭 WebSocket）。\n\n注意：不要依赖 GC 时机做关键业务逻辑——GC 时间不可预测，各引擎表现不一致。"
+  },
+  {
+    "title": "Proxy 与 Object.defineProperty 的对比：Vue 2 vs Vue 3 响应式原理的本质变化",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Proxy",
+      "Vue",
+      "响应式"
+    ],
+    "content": "## 题目\n\n1. Proxy 相比 Object.defineProperty 在拦截能力上有哪些质的提升？\n2. Vue 2 无法检测数组索引赋值和对象属性增删，Vue 3 用 Proxy 如何解决的？\n3. 实现一个 `createReactive` 函数，用 Proxy 将一个普通对象转为响应式（包括嵌套对象和数组）。\n4. Proxy 的性能真的比 Object.defineProperty 差吗？在什么场景下各有什么优劣？",
+    "answer": "## Proxy 的能力提升\n\n| 能力 | Object.defineProperty | Proxy |\n|------|----------------------|-------|\n| 属性增删 | 不可检测 | deleteProperty handler |\n| 数组索引赋值 | 不可检测 | set handler |\n| 数组 length | 不可检测 | set handler |\n| has (in) | 不可检测 | has handler |\n| apply/construct | 不可检测 | apply/construct handler |\n| 嵌套对象 | 递归遍历劫持（性能差） | 懒代理（get 时才递归） |\n| 性能初始化 | 遍历所有属性 O(n) | 只代理对象本身 O(1) |\n\n## 简版 createReactive\n\n```javascript\nfunction createReactive(target, onChange) {\n  const handler = {\n    get(target, key, receiver) {\n      const value = Reflect.get(target, key, receiver);\n      // 懒代理：对象类型才递归代理\n      if (typeof value === 'object' && value !== null) {\n        return createReactive(value, onChange);\n      }\n      return value;\n    },\n    set(target, key, value, receiver) {\n      const old = target[key];\n      const result = Reflect.set(target, key, value, receiver);\n      if (old !== value) onChange(target, key, value, old);\n      return result;\n    },\n    deleteProperty(target, key) {\n      const had = Object.prototype.hasOwnProperty.call(target, key);\n      const result = Reflect.deleteProperty(target, key);\n      if (had) onChange(target, key, undefined, target[key]);\n      return result;\n    }\n  };\n  return new Proxy(target, handler);\n}\n```\n\n## 性能真相\n\nProxy 的 get/set 比原始属性访问慢约 10 倍，但 Object.defineProperty 的 getter/setter 同样有类似开销。Proxy 的优势在于：初始化 O(1) vs O(n)、懒代理节省内存、不需要遍历数组的每个索引。实际业务中，响应式开销远小于 DOM 操作开销，性能差异可忽略。"
+  },
+  {
+    "title": "TypeScript 泛型高级用法：条件类型、映射类型与 infer 关键字",
+    "difficulty": "hard",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "泛型",
+      "条件类型",
+      "infer"
+    ],
+    "content": "## 题目\n\n1. 实现以下 TypeScript 工具类型：DeepReadonly、PickByType、PromiseReturnType。\n2. 条件类型的分配律（distributive conditional type）是什么？什么时候会触发？如何避免？\n3. infer 关键字在类型推断中的作用。用 infer 实现 ReturnType、Parameters、ThisParameterType。\n4. 模板字面量类型（Template Literal Types）有什么用？举一个实际项目中用它做类型安全的例子。",
+    "answer": "## 实现工具类型\n\n```typescript\n// 递归 Readonly\ntype DeepReadonly<T> = {\n  readonly [K in keyof T]: T[K] extends object\n    ? T[K] extends Function ? T[K] : DeepReadonly<T[K]>\n    : T[K];\n};\n\n// 根据值类型 Pick\ntype PickByType<T, V> = {\n  [K in keyof T as T[K] extends V ? K : never]: T[K];\n};\n\n// Promise 的返回值类型（递归解包）\ntype PromiseReturnType<T> = T extends Promise<infer R>\n  ? PromiseReturnType<R>\n  : T;\n```\n\n## 分配律\n\n条件类型 `T extends U ? X : Y` 中，若 T 是裸类型参数（如 T、T[K]）且 T 是联合类型，则结果会按联合类型的每个成员分别计算后联合：`(A | B) extends U ? X : Y` → `(A extends U ? X : Y) | (B extends U ? X : Y)`。\n\n避免分配律：用元组包装 `[T] extends [U] ? X : Y`。\n\n## infer 关键场景\n\n```typescript\ntype ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;\ntype Parameters<T> = T extends (...args: infer P) => any ? P : never;\ntype FirstArg<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;\n```\n\n## 模板字面量类型实战\n\n```typescript\n// 事件系统的类型安全\ntype EventName = 'click' | 'focus' | 'blur';\ntype EventHandler = `on${Capitalize<EventName>}`;\n// 'onClick' | 'onFocus' | 'onBlur'\n\n// API 路由类型安全\ntype Prefix<'/api/', 'users' | 'posts'> = `/api/${'users' | 'posts'}`;\n// '/api/users' | '/api/posts'\n```"
+  },
+  {
+    "title": "如何从零在团队中推广 TypeScript？渐进式迁移策略与实践",
+    "difficulty": "medium",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "工程化"
+    ],
+    "content": "## 题目\n\n1. 一个 20 万行的 JS 项目，如何制定渐进式 TS 迁移方案？（不要只说\"改后缀\"）\n2. 迁移过程中如何保证不影响业务交付？如何处理类型定义不完善导致的\"假安全\"问题？\n3. declare 文件（.d.ts）的三类使用场景：全局类型、模块类型、类型补丁。分别举例。\n4. strict 模式（strictNullChecks, noImplicitAny, strictFunctionTypes）逐步开启的策略是什么？先开哪个后开哪个？",
+    "answer": "## 渐进式迁移策略\n\n1. 基础设施先行：配置 tsconfig.json（allowJs: true）、集成构建工具（Webpack/Vite TS loader）、配置 ESLint TS 规则。\n2. 自底向上迁移：工具函数 → 公共组件 → 页面 → 入口文件。优先迁移被依赖最多的模块（工具函数、API 层）。\n3. 类型边界定义：先写好 API 接口的返回类型（定义了数据形状），这是业务逻辑类型推导的源头。\n4. 禁止回退：ESLint 规则保证新文件必须为 .ts/.tsx。用 lint-staged 在 pre-commit 时检查。\n\n## 假安全问题\n\n类型定义不完善的最大隐患：用了 any 但 tsconfig 未开 strict → 开发时以为有类型安全，实际运行时仍可能报错。\n- 用 stricter 配置逐步收紧（先 noImplicitAny 再 strictNullChecks）\n- CI 中禁止新增 any（@typescript-eslint/no-explicit-any: error）\n- 对第三方库用 patch-package 补类型\n\n## .d.ts 场景\n\n1. 全局类型：declarations/global.d.ts，声明 window 扩展、全局变量。\n2. 模块类型：@types/xxx 或自定义 index.d.ts，为 npm 包提供类型。\n3. 类型补丁：为缺少类型的第三方库创建 .d.ts。\n\n## strict 模式开启顺序\n\n推荐：noImplicitAny → strictNullChecks → strictFunctionTypes → strictBindCallApply → strictPropertyInitialization。从影响面最小到最大，每步观察 CI 通过再开下一个。noImplicitAny 是第一道防线，strictNullChecks 是价值最大但也最难的一步。"
+  },
+  {
+    "title": "TypeScript 类型体操：实现 DeepReadonly、PickByType、PromiseReturnType",
+    "difficulty": "hard",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "泛型"
+    ],
+    "content": "## 题目（需现场写类型实现）\n\n1. 实现 `DeepReadonly<T>`：将 T 的所有属性（包括嵌套对象和数组）都变为 readonly。\n2. 实现 `PickByType<T, V>`：从 T 中提取值为 V 类型的属性。\n3. 实现 `StringToUnion<S>`：将字符串字面量类型的每个字符转为 union。如 `StringToUnion<'hello'>` → `'h' | 'e' | 'l' | 'l' | 'o'`。\n4. 实现 `DeepPick<T, Path>`：根据路径字符串选取嵌套属性。如 `DeepPick<User, 'profile.name'>`。",
+    "answer": "```typescript\n// DeepReadonly：递归处理对象和数组\ntype DeepReadonly<T> = {\n  readonly [K in keyof T]: T[K] extends object\n    ? T[K] extends Function ? T[K] : DeepReadonly<T[K]>\n    : T[K];\n};\n\n// PickByType：利用 key remapping + never 过滤\ntype PickByType<T, V> = {\n  [K in keyof T as T[K] extends V ? K : never]: T[K];\n};\n\n// StringToUnion：递归 + 模板字面量\ntype StringToUnion<S extends string> =\n  S extends `${infer First}${infer Rest}`\n    ? First | StringToUnion<Rest>\n    : never;\n\n// DeepPick：模板字面量 + 递归\ntype DeepPick<T, Path extends string> =\n  Path extends `${infer K}.${infer Rest}`\n    ? K extends keyof T\n      ? { [P in K]: DeepPick<T[K], Rest> }\n      : never\n    : Path extends keyof T\n      ? { [P in Path]: T[Path] }\n      : never;\n\n// 使用示例\ninterface User {\n  name: string;\n  profile: { age: number; email: string };\n  posts: Array<{ title: string }>;\n}\n\ntype A = DeepReadonly<User>;   // 所有属性递归 readonly\ntype B = PickByType<User, string>; // { name: string }\ntype C = StringToUnion<'hello'>;  // 'h' | 'e' | 'l' | 'o'\ntype D = DeepPick<User, 'profile.age'>; // { profile: { age: number } }\n```\n\n核心思路：\n- 条件类型的递归终止条件（extends object / extends Function 边界）\n- key remapping 的 as 子句用于过滤\n- 模板字面量 + infer 做字符串解析\n- extends 的三元分发做类型守卫"
+  },
+  {
+    "title": "TypeScript 装饰器 vs 装饰器模式的新旧实现差异",
+    "difficulty": "medium",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "装饰器"
+    ],
+    "content": "## 题目\n\n1. TypeScript 实验性装饰器（legacy）和 TC39 Stage 3 装饰器提案有什么核心差异？\n2. 类装饰器、方法装饰器、属性装饰器各自的参数是什么？执行顺序是怎样的？\n3. 在 MobX + TypeScript 项目中，@observable 和 @action 装饰器底层做了什么？\n4. TC39 新装饰器的 auto-accessor 关键字解决了什么问题？",
+    "answer": "## 新旧差异\n\n| | Legacy (experimentalDecorators) | TC39 Stage 3 |\n|---|---|---|\n| 执行时机 | 编译时转换为函数调用 | 运行时直接执行 |\n| metadata | emitDecoratorMetadata 自动生成 | 需手动用 Symbol.metadata |\n| 类装饰器 | 可替换构造函数 | 仅增强，不替换 |\n| 初始化顺序 | 属性 → 方法 → 类 | 类 → 成员（与直觉一致） |\n\n## 装饰器参数 & 执行顺序\n\n```typescript\nfunction classDec(target: Function) {}\nfunction methodDec(target: Object, key: string, descriptor: PropertyDescriptor) {}\nfunction propDec(target: Object, key: string) {}\n\n@classDec\nclass Example {\n  @propDec name: string;\n  @methodDec greet() {}\n}\n// 执行顺序：propDec → methodDec → classDec\n```\n\n## MobX observable 原理\n\n@observable 底层用 Object.defineProperty 或 Proxy（取决于配置）劫持 getter/setter，在 get 中收集依赖（追踪谁在读取这个值），在 set 中触发通知（通知所有依赖方重新计算/渲染）。\n\n@action 包裹方法，确保方法内的多次状态修改合并成一次通知（事务机制），避免中间状态的无效渲染。\n\n## auto-accessor\n\nauto-accessor 是 TC39 新提案中为类字段提供的关键字，自动生成 getter/setter。装饰器可以拦截这个访问器而无需手动写 getter/setter。解决了 legacy 装饰器中属性装饰器无法直接拦截读写的问题。\n```typescript\nclass Foo {\n  @logged accessor x = 1; // 自动生成 get/set\n}\n```"
+  }
+]

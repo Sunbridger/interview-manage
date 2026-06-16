@@ -1,0 +1,149 @@
+[
+  {
+    "title": "闭包的原理是什么？如何排查闭包引起的内存泄漏？",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "闭包",
+      "内存泄漏"
+    ],
+    "content": "## 题目\n解释闭包底层原理（词法作用域+执行上下文）。闭包何时导致内存泄漏？如何用 Chrome DevTools 排查和修复？以下代码有什么问题：\n\nfor (var i = 0; i < 5; i++) {\n  btn.onclick = function() { console.log(i); };\n}",
+    "answer": "闭包 = 函数 + 词法环境引用。V8层面，函数[[Scopes]]指向Closure对象。泄漏：大对象被闭包引用无法GC。DevTools Memory面板 → Heap Snapshot → 搜索closure。修复：置null、WeakMap、let替代var。var经典陷阱：所有闭包共享同一个i，打印5个5。用let（块级作用域每次迭代新绑定）修复。"
+  },
+  {
+    "title": "原型链继承与 ES6 class 继承的底层区别",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "原型链",
+      "class"
+    ],
+    "content": "## 题目\n画出 Animal/Dog 的原型链图。ES6 class extends 编译成ES5后做了什么？为什么 typeof null === 'object'？",
+    "answer": "原型链：d.__proto__ → Dog.prototype → Animal.prototype → Object.prototype → null。class编译关键：_inherits(Dog,Animal) 设置 Dog.__proto__=Animal（静态方法继承），ES5手动实现常漏掉。typeof null全为0x00被误判为对象，是JS设计错误无法修复。"
+  },
+  {
+    "title": "this 四种绑定规则 + 箭头函数的特殊性",
+    "difficulty": "easy",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "this",
+      "箭头函数"
+    ],
+    "content": "## 题目\n解释this四种绑定优先级。箭头函数this有何特殊？call/apply/bind区别？手写bind。\n\nconst obj = {\n  name: 'obj',\n  getName: () => { console.log(this.name); },\n  getName2: function() { console.log(this.name); }\n};\nobj.getName(); obj.getName2(); 输出？",
+    "answer": "优先级：new > 显式(call/apply/bind) > 隐式(obj.fn()) > 默认(undefined/window)。箭头函数无自己的this，从定义时外层捕获，call/apply/bind无效。bind返回新函数，支持柯里化。代码输出：箭头函数this指向外层(undefined)，getName2输出'obj'。手写bind核心：判断new调用优先，合并内外参数。"
+  },
+  {
+    "title": "手写 Promise.all / race / allSettled + 并发限制池",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Promise",
+      "并发控制"
+    ],
+    "content": "## 题目\n手写Promise.all/race/allSettled/any。各适用什么场景？Promise.all一个失败如何不丢其他结果？实现带并发限制的Promise池（最多3个并发）。",
+    "answer": "allSettled核心：每个promise包一层catch，返回{status,value/reason}。并发池：维护executing Set，达到limit时Promise.race等待任一完成。适用：all=全成功才继续，race=超时控制，allSettled=批量操作需每结果，any=多CDN降级。容错：promises.map(p => p.catch(e => ({error:e})))。"
+  },
+  {
+    "title": "Generator 与 async/await 的本质联系",
+    "difficulty": "hard",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Generator",
+      "async/await"
+    ],
+    "content": "## 题目\nGenerator执行模型？yield和next()如何双向传数据？用Generator+Promise模拟async/await。异步迭代器(for await...of)原理和适用场景？",
+    "answer": "Generator是状态机，yield暂停/next恢复，next(arg)的arg作为上一个yield返回值。模拟async/await核心：递归调用gen.next()，Promise.resolve包装value，.then后继续递归。for await...of依赖Symbol.asyncIterator（返回{next(): Promise<IteratorResult>}），适合分页数据和流式处理。"
+  },
+  {
+    "title": "JS 模块化演进：IIFE → CJS → AMD → ESM → Module Federation",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "模块化",
+      "ESM",
+      "CommonJS"
+    ],
+    "content": "## 题目\n简述模块化演进各阶段痛点。ESM static import vs CJS runtime require的根本区别？为什么ESM支持Tree Shaking？import会提升吗？循环引用如何处理？Module Federation 2.0（ESM原生）vs 1.0（Webpack）？",
+    "answer": "ESM编译时确定依赖图（静态分析→Tree Shaking），导出值引用（live binding）；CJS运行时加载，导出值拷贝。import声明在编译阶段提升到模块顶部。ESM循环引用不会阻塞（引用已提升）；CJS返回当前已执行的exports（可能不完整）。MF 2.0基于浏览器原生ESM+import maps，零运行时开销，与HTTP缓存天然兼容。"
+  },
+  {
+    "title": "WeakMap/WeakSet 的独特应用场景",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "WeakMap",
+      "内存管理"
+    ],
+    "content": "## 题目\nWeakMap和Map核心区别？为什么不可迭代？举例3个实际应用场景。WeakRef和FinalizationRegistry适用场景及注意事项？",
+    "answer": "WeakMap key必须是对象且为弱引用，GC可回收→不可迭代。三场景：1)DOM节点元数据（节点移除自动清理）2)类私有属性（_counter = new WeakMap()）3)请求去重缓存（WeakMap存inflight Promise）。WeakRef创建弱引用.deref()可能返回undefined。FinalizationRegistry注册GC回调但不依赖GC时机做关键业务。"
+  },
+  {
+    "title": "Proxy vs Object.defineProperty：Vue 2→3 响应式本质变化",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Proxy",
+      "Vue",
+      "响应式"
+    ],
+    "content": "## 题目\nProxy相比defineProperty在拦截能力上提升？Vue2无法检测数组索引赋值和属性增删，Vue3如何解决？实现createReactive函数（含嵌套和数组）。Proxy性能真的差吗？",
+    "answer": "Proxy支持：属性增删(deleteProperty)、数组索引/长度(set)、has(in)、apply/construct、懒代理(get时才递归，O(1)初始化vs O(n))。createReactive核心：get中判断typeof === 'object'则递归代理，set中Reflect.set + onChange回调，deleteProperty中检测hasOwnProperty。Proxy get/set比原始慢约10倍但远小于DOM开销，懒代理节省内存。"
+  },
+  {
+    "title": "TS 泛型高级用法：条件类型、映射类型与 infer",
+    "difficulty": "hard",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "泛型",
+      "infer"
+    ],
+    "content": "## 题目\n实现DeepReadonly、PickByType、PromiseReturnType。条件类型分配律是什么？infer在ReturnType/Parameters中的作用？模板字面量类型实战？",
+    "answer": "DeepReadonly：递归 + keyof + readonly，边界条件是Function（不递归）和基础类型。PickByType：key remapping的as子句 + never过滤。分配律：裸类型参数T在extends中按联合成员分配，用[T]包装避免。infer：T extends (...args: infer P) => any ? P : never。模板字面量：`on${Capitalize<EventName>}` 实现事件名的类型安全。"
+  },
+  {
+    "title": "从零推广 TypeScript：渐进式迁移策略",
+    "difficulty": "medium",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "工程化"
+    ],
+    "content": "## 题目\n20万行JS项目如何渐进TS迁移？如何避免类型定义不完善的假安全？.d.ts三类使用场景？strict模式开启顺序？",
+    "answer": "策略：工具函数→公共组件→页面→入口（自底向上）。allowJs:true, tsconfig增量。类型边界：先写好API返回类型（数据源头）。禁止回退：ESLint + lint-staged保证新文件.ts。假安全：CI禁止新增any，strict逐步收紧。.d.ts：全局类型(global.d.ts)、模块类型(@types)、补丁(patch-package)。strict顺序：noImplicitAny→strictNullChecks→strictFunctionTypes。"
+  },
+  {
+    "title": "TS 类型体操：DeepReadonly / PickByType / StringToUnion / DeepPick",
+    "difficulty": "hard",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "泛型"
+    ],
+    "content": "## 题目（现场写类型实现）\n实现DeepReadonly（递归readonly）、PickByType（按值类型Pick）、StringToUnion（'hello'→'h'|'e'|'l'|'o'）、DeepPick（按路径字符串选取嵌套属性如User['profile.name']）。",
+    "answer": "type DeepReadonly<T> = { readonly [K in keyof T]: T[K] extends object ? T[K] extends Function ? T[K] : DeepReadonly<T[K]> : T[K]; }。PickByType用key remapping as + never过滤。StringToUnion用infer + 递归+模板字面量拆分。DeepPick用模板字面量infer K.Rest 递归。核心：条件类型递归终止、never过滤、infer解析。"
+  },
+  {
+    "title": "TS 装饰器 legacy vs TC39 Stage 3 + auto-accessor",
+    "difficulty": "medium",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "装饰器"
+    ],
+    "content": "## 题目\nLegacy装饰器 vs TC39 Stage 3装饰器的核心差异？装饰器执行顺序？MobX @observable底层做了什么？auto-accessor关键字解决什么问题？",
+    "answer": "差异：Legacy编译时转换，Stage 3运行时执行。执行顺序：Legacy(属性→方法→类)，Stage 3(类→成员)。@observable用defineProperty/Proxy劫持get收集依赖、set触发通知。@action包裹方法合并多次修改为一次通知（事务）。auto-accessor自动生成getter/setter，解决Legacy属性装饰器无法直接拦截读写的问题。"
+  }
+]

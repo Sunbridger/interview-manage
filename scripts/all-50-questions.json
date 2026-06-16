@@ -1,0 +1,786 @@
+[
+  {
+    "title": "闭包的原理是什么？如何排查闭包引起的内存泄漏？",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "闭包",
+      "内存泄漏"
+    ],
+    "content": "## 题目\n解释闭包底层原理（词法作用域+执行上下文）。闭包何时导致内存泄漏？如何用 Chrome DevTools 排查和修复？以下代码有什么问题：\n\nfor (var i = 0; i < 5; i++) {\n  btn.onclick = function() { console.log(i); };\n}",
+    "answer": "闭包 = 函数 + 词法环境引用。V8层面，函数[[Scopes]]指向Closure对象。泄漏：大对象被闭包引用无法GC。DevTools Memory面板 → Heap Snapshot → 搜索closure。修复：置null、WeakMap、let替代var。var经典陷阱：所有闭包共享同一个i，打印5个5。用let（块级作用域每次迭代新绑定）修复。"
+  },
+  {
+    "title": "原型链继承与 ES6 class 继承的底层区别",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "原型链",
+      "class"
+    ],
+    "content": "## 题目\n画出 Animal/Dog 的原型链图。ES6 class extends 编译成ES5后做了什么？为什么 typeof null === 'object'？",
+    "answer": "原型链：d.__proto__ → Dog.prototype → Animal.prototype → Object.prototype → null。class编译关键：_inherits(Dog,Animal) 设置 Dog.__proto__=Animal（静态方法继承），ES5手动实现常漏掉。typeof null全为0x00被误判为对象，是JS设计错误无法修复。"
+  },
+  {
+    "title": "this 四种绑定规则 + 箭头函数的特殊性",
+    "difficulty": "easy",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "this",
+      "箭头函数"
+    ],
+    "content": "## 题目\n解释this四种绑定优先级。箭头函数this有何特殊？call/apply/bind区别？手写bind。\n\nconst obj = {\n  name: 'obj',\n  getName: () => { console.log(this.name); },\n  getName2: function() { console.log(this.name); }\n};\nobj.getName(); obj.getName2(); 输出？",
+    "answer": "优先级：new > 显式(call/apply/bind) > 隐式(obj.fn()) > 默认(undefined/window)。箭头函数无自己的this，从定义时外层捕获，call/apply/bind无效。bind返回新函数，支持柯里化。代码输出：箭头函数this指向外层(undefined)，getName2输出'obj'。手写bind核心：判断new调用优先，合并内外参数。"
+  },
+  {
+    "title": "手写 Promise.all / race / allSettled + 并发限制池",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Promise",
+      "并发控制"
+    ],
+    "content": "## 题目\n手写Promise.all/race/allSettled/any。各适用什么场景？Promise.all一个失败如何不丢其他结果？实现带并发限制的Promise池（最多3个并发）。",
+    "answer": "allSettled核心：每个promise包一层catch，返回{status,value/reason}。并发池：维护executing Set，达到limit时Promise.race等待任一完成。适用：all=全成功才继续，race=超时控制，allSettled=批量操作需每结果，any=多CDN降级。容错：promises.map(p => p.catch(e => ({error:e})))。"
+  },
+  {
+    "title": "Generator 与 async/await 的本质联系",
+    "difficulty": "hard",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Generator",
+      "async/await"
+    ],
+    "content": "## 题目\nGenerator执行模型？yield和next()如何双向传数据？用Generator+Promise模拟async/await。异步迭代器(for await...of)原理和适用场景？",
+    "answer": "Generator是状态机，yield暂停/next恢复，next(arg)的arg作为上一个yield返回值。模拟async/await核心：递归调用gen.next()，Promise.resolve包装value，.then后继续递归。for await...of依赖Symbol.asyncIterator（返回{next(): Promise<IteratorResult>}），适合分页数据和流式处理。"
+  },
+  {
+    "title": "JS 模块化演进：IIFE → CJS → AMD → ESM → Module Federation",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "模块化",
+      "ESM",
+      "CommonJS"
+    ],
+    "content": "## 题目\n简述模块化演进各阶段痛点。ESM static import vs CJS runtime require的根本区别？为什么ESM支持Tree Shaking？import会提升吗？循环引用如何处理？Module Federation 2.0（ESM原生）vs 1.0（Webpack）？",
+    "answer": "ESM编译时确定依赖图（静态分析→Tree Shaking），导出值引用（live binding）；CJS运行时加载，导出值拷贝。import声明在编译阶段提升到模块顶部。ESM循环引用不会阻塞（引用已提升）；CJS返回当前已执行的exports（可能不完整）。MF 2.0基于浏览器原生ESM+import maps，零运行时开销，与HTTP缓存天然兼容。"
+  },
+  {
+    "title": "WeakMap/WeakSet 的独特应用场景",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "WeakMap",
+      "内存管理"
+    ],
+    "content": "## 题目\nWeakMap和Map核心区别？为什么不可迭代？举例3个实际应用场景。WeakRef和FinalizationRegistry适用场景及注意事项？",
+    "answer": "WeakMap key必须是对象且为弱引用，GC可回收→不可迭代。三场景：1)DOM节点元数据（节点移除自动清理）2)类私有属性（_counter = new WeakMap()）3)请求去重缓存（WeakMap存inflight Promise）。WeakRef创建弱引用.deref()可能返回undefined。FinalizationRegistry注册GC回调但不依赖GC时机做关键业务。"
+  },
+  {
+    "title": "Proxy vs Object.defineProperty：Vue 2→3 响应式本质变化",
+    "difficulty": "medium",
+    "categoryName": "JavaScript",
+    "categorySlug": "javascript",
+    "tagNames": [
+      "Proxy",
+      "Vue",
+      "响应式"
+    ],
+    "content": "## 题目\nProxy相比defineProperty在拦截能力上提升？Vue2无法检测数组索引赋值和属性增删，Vue3如何解决？实现createReactive函数（含嵌套和数组）。Proxy性能真的差吗？",
+    "answer": "Proxy支持：属性增删(deleteProperty)、数组索引/长度(set)、has(in)、apply/construct、懒代理(get时才递归，O(1)初始化vs O(n))。createReactive核心：get中判断typeof === 'object'则递归代理，set中Reflect.set + onChange回调，deleteProperty中检测hasOwnProperty。Proxy get/set比原始慢约10倍但远小于DOM开销，懒代理节省内存。"
+  },
+  {
+    "title": "TS 泛型高级用法：条件类型、映射类型与 infer",
+    "difficulty": "hard",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "泛型",
+      "infer"
+    ],
+    "content": "## 题目\n实现DeepReadonly、PickByType、PromiseReturnType。条件类型分配律是什么？infer在ReturnType/Parameters中的作用？模板字面量类型实战？",
+    "answer": "DeepReadonly：递归 + keyof + readonly，边界条件是Function（不递归）和基础类型。PickByType：key remapping的as子句 + never过滤。分配律：裸类型参数T在extends中按联合成员分配，用[T]包装避免。infer：T extends (...args: infer P) => any ? P : never。模板字面量：`on${Capitalize<EventName>}` 实现事件名的类型安全。"
+  },
+  {
+    "title": "从零推广 TypeScript：渐进式迁移策略",
+    "difficulty": "medium",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "工程化"
+    ],
+    "content": "## 题目\n20万行JS项目如何渐进TS迁移？如何避免类型定义不完善的假安全？.d.ts三类使用场景？strict模式开启顺序？",
+    "answer": "策略：工具函数→公共组件→页面→入口（自底向上）。allowJs:true, tsconfig增量。类型边界：先写好API返回类型（数据源头）。禁止回退：ESLint + lint-staged保证新文件.ts。假安全：CI禁止新增any，strict逐步收紧。.d.ts：全局类型(global.d.ts)、模块类型(@types)、补丁(patch-package)。strict顺序：noImplicitAny→strictNullChecks→strictFunctionTypes。"
+  },
+  {
+    "title": "TS 类型体操：DeepReadonly / PickByType / StringToUnion / DeepPick",
+    "difficulty": "hard",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "泛型"
+    ],
+    "content": "## 题目（现场写类型实现）\n实现DeepReadonly（递归readonly）、PickByType（按值类型Pick）、StringToUnion（'hello'→'h'|'e'|'l'|'o'）、DeepPick（按路径字符串选取嵌套属性如User['profile.name']）。",
+    "answer": "type DeepReadonly<T> = { readonly [K in keyof T]: T[K] extends object ? T[K] extends Function ? T[K] : DeepReadonly<T[K]> : T[K]; }。PickByType用key remapping as + never过滤。StringToUnion用infer + 递归+模板字面量拆分。DeepPick用模板字面量infer K.Rest 递归。核心：条件类型递归终止、never过滤、infer解析。"
+  },
+  {
+    "title": "TS 装饰器 legacy vs TC39 Stage 3 + auto-accessor",
+    "difficulty": "medium",
+    "categoryName": "TypeScript",
+    "categorySlug": "typescript",
+    "tagNames": [
+      "TypeScript",
+      "装饰器"
+    ],
+    "content": "## 题目\nLegacy装饰器 vs TC39 Stage 3装饰器的核心差异？装饰器执行顺序？MobX @observable底层做了什么？auto-accessor关键字解决什么问题？",
+    "answer": "差异：Legacy编译时转换，Stage 3运行时执行。执行顺序：Legacy(属性→方法→类)，Stage 3(类→成员)。@observable用defineProperty/Proxy劫持get收集依赖、set触发通知。@action包裹方法合并多次修改为一次通知（事务）。auto-accessor自动生成getter/setter，解决Legacy属性装饰器无法直接拦截读写的问题。"
+  },
+  {
+    "title": "React Fiber 架构：调度优先级与可中断渲染",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Fiber",
+      "调度"
+    ],
+    "content": "## 题目\nReact Fiber解决了什么问题（Stack Reconciler痛点）？Fiber Node的数据结构和双缓冲（current/workInProgress）机制？lane模型如何实现优先级调度？为什么React 16+能中断渲染而React 15不能？",
+    "answer": "Fiber解决：同步递归不可中断导致长任务掉帧。Fiber Node是链表结构（child/sibling/return），可随时暂停恢复。双缓冲：current和workInProgress两棵树交替，commit阶段一次DOM更新。lane模型：31位二进制表示优先级，用位运算合并/判断。中断原理：workLoop中shouldYield()检查剩余时间<5ms则暂停，让出主线程。"
+  },
+  {
+    "title": "useEffect 闭包陷阱与 cleanup 机制",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Hooks",
+      "useEffect"
+    ],
+    "content": "## 题目\n1.useEffect闭包陷阱是什么？为什么setInterval内state总是旧值？\n2.cleanup函数的执行时机和常见用途？\n3.useEffect vs useLayoutEffect的区别和各自适用场景？\n4.如何实现一个useInterval Hook（解决setInterval闭包问题）？",
+    "answer": "闭包陷阱：effect内的函数捕获的是创建时的state值。setInterval在effect中只创建一次=>永远读到初始值。useLayoutEffect在DOM变更后同步执行（阻塞渲染），适合DOM测量/避免闪烁；useEffect异步不阻塞。useInterval方案：用useRef存callback，interval内读ref.current，每次render更新ref。cleanup在下次effect前或unmount时执行。"
+  },
+  {
+    "title": "useMemo/useCallback 的使用边界",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Hooks",
+      "性能优化"
+    ],
+    "content": "## 题目\nuseMemo和useCallback什么时候该用什么时候不该用？它们的内存开销vs重新计算开销如何权衡？React Forget编译器（自动memoization）会完全替代它们吗？以下场景需要用useMemo吗：\n1.<div style={{color:'red'}}>\n2.const doubled = arr.map(x=>x*2); return <List data={doubled}>\n3.const handler = () => doSomething(id); return <Child onClick={handler}>",
+    "answer": "不该用的场景：简单计算开销<创建memo开销（如四则运算）、引用类型传给原生DOM元素（React不会对原生元素做浅比较）。该用的场景：传给React.memo子组件的引用值、useEffect依赖数组中的对象、昂贵的计算（大数据sort/filter）。Forget编译器编译时自动添加等效memoization，最终会减少显式useMemo/useCallback需求。场景答案：1.不需要2.不需要（简单map）3.如果Child是React.memo则需要。"
+  },
+  {
+    "title": "React 18 并发特性：useTransition vs useDeferredValue",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Concurrent",
+      "Suspense"
+    ],
+    "content": "## 题目\nuseTransition和useDeferredValue有什么区别？什么场景选哪个？Suspense + startTransition如何实现路由切换时保持旧页面（不闪白）？React 18的自动批处理（Automatic Batching）相比React 17有什么变化？",
+    "answer": "useTransition：包裹状态更新，返回isPending标志，适用由用户交互触发的重计算（搜索过滤）。useDeferredValue：延迟值更新，适用props变化触发的重渲染（父组件传入的值）。Suspense + startTransition：包裹路由导航，React先渲染旧路由直到新路由数据就绪，避免fallback闪烁。自动批处理：React 18中setTimeout/Promise/native事件内的多次setState也自动合并，React 17只在React事件中批处理。"
+  },
+  {
+    "title": "状态提升 vs Context vs 状态管理库的选择决策树",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "状态管理",
+      "Context"
+    ],
+    "content": "## 题目\n1.Context的性能陷阱是什么？为什么Context.Provider的值变化会导致所有Consumer重渲染？如何用split context + useMemo优化？\n2.什么场景下React自带的方案就够了，什么场景下必须引入Zustand/Jotai/Redux？\n3.一个表单有50+字段，如何设计状态结构避免不必要的重渲染？",
+    "answer": "Context陷阱：Provider value变化→所有useContext组件重渲染，即使只用了value的一小部分。优化：拆分为多个Context（读写分离）、useMemo包裹value、或用Zustand等外部store（精确订阅，selector级更新）。决策：全局状态少变化(Context)、复杂状态逻辑+中间件(Redux/Zustand)、原子化+精准订阅(Jotai/Recoil)。50+字段表单：用MobX(observable粒度为属性级)或Jotai(原子)，避免Redux全局store。"
+  },
+  {
+    "title": "React 合成事件原理与事件委托",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "事件",
+      "合成事件"
+    ],
+    "content": "## 题目\nReact合成事件(SyntheticEvent)的设计目的是什么？e.persist()和e.nativeEvent的应用场景？React 17+将事件委托挂载到rootNode而非document，这个改动解决了什么问题？在React中如何监听非合成事件（如resize/scroll）？",
+    "answer": "合成事件目的：抹平浏览器差异、事件池复用（React 16）、统一冒泡行为。React 17事件委托改到rootNode解决：1)多个React版本共存时document上的事件冲突 2)e.stopPropagation()无法阻止到达document的问题。非合成事件用useEffect + addEventListener，或用ref直接绑定。React 17废弃e.persist()（取消事件池机制）。"
+  },
+  {
+    "title": "Server Components vs Client Components 的边界设计",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "RSC",
+      "Next.js"
+    ],
+    "content": "## 题目\nRSC（React Server Components）和传统SSR有什么区别？'use client'和'use server'的边界如何划定？什么组件应该放服务端，什么必须放客户端？跨Server/Client边界传递数据时有哪些限制（序列化/函数不能传）？",
+    "answer": "RSC vs SSR：RSC在服务端运行一次不水合（零JS），SSR需要水合（hydrate）。边界：交互组件用'use client'（按钮/表单/动画），纯数据展示用Server Component。数据限制：props必须可序列化（JSON-serializable），不能传函数/JSX元素/Symbol。Server Component可直接await数据而无需useEffect fetch。嵌套模式：外层Server→内层Client（Server传数据给Client）→Client内再包Server（作为children传）。"
+  },
+  {
+    "title": "虚拟列表在复杂交互场景下的完整实现",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "虚拟列表",
+      "性能优化"
+    ],
+    "content": "## 题目\n实现一个支持以下特性的VirtualList：1.动态高度（不等高item） 2.粘性分组标题 3.滚动到指定索引（scrollToIndex） 4.支持双向加载（向上/向下滚动加载更多）\n如何解决动态高度导致滚动条跳动的问题？有哪些预估算高度+实测后修正的策略？",
+    "answer": "核心数据结构：positions数组记录每项top/bottom/height，用二分查找定位当前scrollTop对应索引。动态高度：先用预估高度渲染，getBoundingClientRect()实测后更新positions并修正后续项偏移——用ResizeObserver监听每项高度变化。scrollToIndex：计算目标offset → scrollTo + 缓存修正。双向加载：监听scrollTop<阈值触发onLoadPrev，scrollBottom<阈值触发onLoadNext，加载后修正scrollTop保持视觉位置不变。"
+  },
+  {
+    "title": "Web Vitals 优化：LCP / INP / CLS 实战策略",
+    "difficulty": "hard",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "Web Vitals",
+      "LCP/INP/CLS"
+    ],
+    "content": "## 题目\nLCP最大内容绘制如何优化（以图片为例）？INP(Interaction to Next Paint)替代FID后关注什么？CLS累计布局偏移的常见原因及修复？如何用PerformanceObserver API在生产环境统计真实用户数据？",
+    "answer": "LCP优化：预加载关键图片(link rel=preload)、使用fetchpriority=high、响应式图片(srcset)、CDN加速。INP关注所有交互延迟（非仅首次），优化：拆分长任务(requestIdleCallback)、debounce非关键事件、Web Worker移计算。CLS来源：无尺寸图片、动态注入广告、Web Font切换。修复：图片设置width/height、字体用size-adjust、动画用transform（compositor-only）。RUM统计：new PerformanceObserver监听paint/layout-shift类型，上报到Sentry/自建平台。"
+  },
+  {
+    "title": "打包体积优化：Tree Shaking 原理与副作用文件处理",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "Tree Shaking",
+      "Webpack"
+    ],
+    "content": "## 题目\nTree Shaking的实现原理是什么（ESM静态分析+DCE）？为什么CJS无法Tree Shake？package.json的sideEffects字段如何配置？import * as React from 'react'和import { useState } from 'react'打包体积有区别吗？如何用webpack-bundle-analyzer定位体积问题？",
+    "answer": "Tree Shaking：ESM的import/export在编译时确定依赖图，标记未使用的导出为dead code，Terser在minify阶段删除。CJS的require动态执行无法静态分析。sideEffects:false表示文件无副作用可直接删除；数组指定有副作用的glob。命名导入会做tree shaking，命名空间导入会引入整个模块。bundle-analyzer生成可视化treemap查看每个包的gzip大小。"
+  },
+  {
+    "title": "资源加载优化：preload / prefetch / preconnect 的正确使用",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "资源加载",
+      "preload/prefetch"
+    ],
+    "content": "## 题目\npreload、prefetch、preconnect、dns-prefetch各自在什么时机触发？preload和prefetch的优先级区别？preload使用不当会导致什么问题（如阻塞onload）？如何实现图片的渐进加载（LQIP → 原图）？",
+    "answer": "preload：当前页面必需资源，高优先级，立即下载（字体、关键CSS）。prefetch：未来页面可能用到的资源，低优先级，空闲时下载（路由预取）。preconnect：提前建立TCP+TLS连接（第三方域）。dns-prefetch：仅DNS解析。preload陷阱：过多preload抢占关键资源带宽、不写as属性无法正确应用优先级、阻塞window.onload。LQIP：先用base64缩略图(blur-up)，再用IntersectionObserver懒加载原图。"
+  },
+  {
+    "title": "长任务拆分：requestIdleCallback + Scheduler API",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "长任务",
+      "Scheduler"
+    ],
+    "content": "## 题目\n什么是长任务（>50ms）？如何用requestIdleCallback拆分？没有requestIdleCallback时（Safari不支持）如何polyfill？React的Scheduler包如何做时间切片？MessageChannel在其中扮演什么角色？",
+    "answer": "长任务>50ms阻塞主线程导致INP升高。拆分：将任务分成小片段，每片段用requestIdleCallback(deadline.timeRemaining()>0)或setTimeout(0)让步。Safari polyfill：用MessageChannel的postMessage模拟（微任务后宏任务执行）。React Scheduler：用MessageChannel + 优先级队列，每个workLoop中检查shouldYield（耗时>5ms），是则让出主线程。MessageChannel短延迟(比较setTimeout 4ms最小延迟)。"
+  },
+  {
+    "title": "React 渲染优化：React.memo / useMemo 的误用场景",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "React",
+      "性能优化",
+      "React.memo"
+    ],
+    "content": "## 题目\nReact.memo放在什么位置最有效？props全是非引用类型还需要memo吗？useMemo缓存JSX vs React.memo包装组件的区别？为什么在Context消费者上React.memo无效？Profiler API怎么用？",
+    "answer": "React.memo对props做浅比较。props全是基础类型时React.memo收益最大（无需diff子组件树）。useMemo缓存JSX：将VNode创建移到hook中，仅依赖变化时才重建。React.memo：跳过整个子树的render。Context消费者上memo无效因为Context变化直接触发订阅者重渲染。Profiler：<Profiler id='x' onRender={callback}>包裹组件，记录每次render的duration和commit时间，定位慢组件。"
+  },
+  {
+    "title": "Next.js 中的缓存策略：全链路缓存体系",
+    "difficulty": "hard",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "Next.js",
+      "缓存",
+      "SSR/ISR"
+    ],
+    "content": "## 题目\nNext.js App Router的全链路缓存包含哪4层？full route cache vs data cache的区别？ISR的stale-while-revalidate在Next.js 14+的行为变化？如何对一个实时性要求高的页面做部分静态+部分动态的混合渲染？",
+    "answer": "4层缓存：1)请求记忆化(React cache函数，单次render去重) 2)数据缓存(fetch的next.revalidate，跨请求持久) 3)全路由缓存(静态渲染的HTML/RSC payload，服务端内存) 4)路由缓存(客户端内存，prefetch缓存)。PPR(Partial Prerendering)：用Suspense边界划分静态shell和动态hole，静态部分直接返回，动态部分streaming。ISR：revalidate时间内返回缓存，后台触发重新生成，Next 14+支持按路径手动revalidate。"
+  },
+  {
+    "title": "BFC（块级格式化上下文）的原理与实战",
+    "difficulty": "medium",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "BFC",
+      "布局"
+    ],
+    "content": "## 题目\n什么是BFC？触发BFC的方式有哪些？BFC能解决哪些布局问题？为什么overflow:hidden能清除浮动（原理）？display:flow-root是什么？BFC与外边距折叠（margin collapsing）的关系？",
+    "answer": "BFC是独立渲染区域，内部元素布局不影响外部。触发：overflow非visible、display:flow-root、float非none、position:absolute/fixed。解决：清楚浮动（BFC包含浮动子元素）、防止margin重叠（同BFC内相邻元素margin合并，不同BFC不合并）、防止文字环绕浮动元素。flow-root是专门创建BFC的属性（无overflow副作用）。margin collapsing只发生在同一BFC的块级元素之间。"
+  },
+  {
+    "title": "CSS Layout：Flexbox vs Grid 深度对比",
+    "difficulty": "medium",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "Flexbox",
+      "Grid"
+    ],
+    "content": "## 题目\n什么场景用Flexbox什么场景用Grid？Grid的fr单位如何与minmax结合做响应式？subgrid解决了什么痛点？以下布局用Flexbox还是Grid实现更合适：1.导航栏logo+菜单+头像 2.商品卡片网格 3.表单标签+输入框对齐 4.仪表盘多卡片布局",
+    "answer": "Flexbox：一维布局（行或列），内容驱动尺寸，适合组件内部排列（导航栏、表单行）。Grid：二维布局（行列），容器驱动尺寸，适合页面级布局（卡片网格、仪表盘）。fr + minmax实现响应式列宽。subgrid：子网格继承父网格轨道大小，解决嵌套网格列不对齐问题。答案：1.Flex 2.Grid 3.Grid(grid-template-columns:auto 1fr) 4.Grid(grid-template-areas定义区域)。"
+  },
+  {
+    "title": "CSS-in-JS 方案的优劣与性能影响",
+    "difficulty": "hard",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "CSS-in-JS",
+      "性能"
+    ],
+    "content": "## 题目\nruntime CSS-in-JS（styled-components/Emotion）vs zero-runtime（Linaria/panda CSS）vs Tailwind CSS的架构区别？运行时CSS-in-JS为什么有性能问题？React 18 Streaming SSR中CSS-in-JS会遇到什么问题？原子化CSS（atomic CSS）的复用原理？",
+    "answer": "Runtime方案在组件渲染时动态生成className和插入style标签，问题：1)JS bundle包含CSS逻辑 2)每次渲染重新计算样式 3)SSR需要额外提取CSS步骤。Zero-runtime方案编译时提取CSS为静态文件，运行时零开销。Streaming SSR问题：HTML分块传输时runtime方案注入的style可能落后于HTML，导致无样式闪烁(FOUC)。原子化CSS：每个CSS属性值组合对应一个不可变的工具类，极大提高复用率（如Tailwind的w-full、text-center）。"
+  },
+  {
+    "title": "CSS 动画性能：仅使用 transform 和 opacity 的原因",
+    "difficulty": "medium",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "动画",
+      "性能"
+    ],
+    "content": "## 题目\n为什么高性能动画应只使用transform和opacity（compositor-only属性）？浏览器的渲染流水线（Style→Layout→Paint→Composite）各阶段开销如何？will-change的正确使用和滥用风险？如何用Chrome DevTools Performance面板分析动画瓶颈？CSS animation vs WAAPI(Web Animations API)的优劣？",
+    "answer": "transform和opacity位于合成阶段(Composite)，不触发布局和绘制，可由GPU直接处理。渲染流水线：Style(计算样式)→Layout(重排，最贵)→Paint(光栅化)→Composite(合成层)。will-change提前创建合成层避免运行时重建，但过多会消耗GPU内存。DevTools：Performance录制→查看Rendering→Paint闪烁→Layer面板查看合成层数量。WAAPI优点：JS控制时间线、组合动画、暂停/反转，比纯CSS更灵活。"
+  },
+  {
+    "title": "从输入 URL 到页面渲染的完整过程",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "浏览器",
+      "网络",
+      "渲染"
+    ],
+    "content": "## 题目\n请分步骤描述从输入URL到页面渲染过程中，每个阶段做的事情：DNS解析→TCP握手→TLS握手→HTTP请求→解析HTML→构建DOM/CSSOM→布局→绘制→合成。重点关注：1.每个阶段可能的性能瓶颈是什么？2.HTTP/2的多路复用如何改变这个流程？3.preload scanner如何加速资源发现？",
+    "answer": "完整流程：1)DNS解析(递归查询→缓存，预解析link dns-prefetch) 2)TCP三次握手(SYN→SYN-ACK→ACK) 3)TLS握手(1.5RTT) 4)HTTP请求+响应(HPACK头部压缩) 5)HTML解析→DOM树(遇到CSS阻塞render、async/defer脚本不同行为) 6)CSSOM构建(CSS阻塞渲染但不阻塞DOM构建) 7)渲染树(Render Tree = DOM+CSSOM合并) 8)Layout(计算每个节点几何位置) 9)Paint(生成绘制指令) 10)Composite(合成图层，GPU处理)。Preload scanner：HTML解析中提前扫描src/href属性并发起资源请求，不等待解析到对应标签。HTTP/2：单连接多Stream并发，消除HTTP/1.x的6连接限制和队头阻塞。"
+  },
+  {
+    "title": "回流（Reflow）与重绘（Repaint）的触发与优化",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "浏览器",
+      "回流",
+      "重绘"
+    ],
+    "content": "## 题目\n1.哪些操作会触发回流？哪些只触发重绘？\n2.如何用浏览器的Layout Trashing概念理解读写交替导致的强制同步布局？\n3.fastdom库的解决方案原理是什么？\n4.以下代码有什么性能问题：el.style.width = el.offsetWidth + 1 + 'px'; el.style.height = el.offsetHeight + 1 + 'px';",
+    "answer": "回流触发：修改几何属性(width/height/margin/position/display)、改变DOM结构、获取offsetWidth/scrollTop等（浏览器需要立即计算最新布局→强制同步布局）。重绘触发：修改color/background/visibility等非几何属性。Layout Thrashing：交替读(强制layout)→写(使layout失效)→读(再次强制layout)，导致多次不必要的重排。fastdom方案：将读和写分别批量排队，先全部读取再全部写入。代码问题：每次读offset触发强制同步布局，两次读写交替导致两次layout，应batch读取后再batch写入。"
+  },
+  {
+    "title": "V8 引擎的 Hidden Class 与内联缓存",
+    "difficulty": "hard",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "V8",
+      "性能优化"
+    ],
+    "content": "## 题目\nV8如何通过Hidden Class（Map）优化属性访问？为什么动态添加属性会破坏优化（去优化→字典模式）？内联缓存（Inline Cache）如何让属性访问接近C语言速度？以下代码为什么第二个循环比第一个慢很多？\n\n// 循环1\nfor (const o of arr) { o.x = 1; o.y = 2; }\n// 循环2\nfor (const o of arr) { o.x = 1; o.y = 2; o.z = 3; }\n// 循环3\nfor (const o of arr) { o.y = 2; o.x = 1; }",
+    "answer": "Hidden Class(Map)是V8跟踪对象形状(shape)的元结构。相同属性顺序的对象共享同一个Map→属性访问是固定偏移量读取（非哈希查找）。动态添加属性创建新的Map(transition chain)，若属性顺序不一致则分裂Map链(多态/超态)→降级为字典模式(哈希查找)。IC：在字节码层面缓存上次找到的属性偏移量，下次同Map直接偏移读取。循环1：所有对象同Map(先x后y)→单态IC最快。循环2：z的添加破坏Map一致性→多态。循环3：不同顺序导致不同Map链→去优化。最佳实践：构造器中一次性定义所有属性，属性顺序保持一致。"
+  },
+  {
+    "title": "跨域方案全景：CORS / JSONP / postMessage / 代理",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "跨域",
+      "CORS",
+      "postMessage"
+    ],
+    "content": "## 题目\nCORS的简单请求和预检请求（preflight）的触发条件？withCredentials:true时Access-Control-Allow-Origin为什么不能是*？JSONP的原理和安全隐患？postMessage跨窗口通信如何保证安全（origin校验+事件源验证）？Nginx反向代理跨域 vs CORS的实际选择？",
+    "answer": "预检触发条件：非简单方法(PUT/DELETE/PATCH)、自定义Content-Type(非form/text/urlencoded)、自定义Header。withCredentials:true需要Access-Control-Allow-Credentials:true，且ACAO不能是*(规范禁止，安全原因)。JSONP：动态创建script标签，URL带callback参数，服务端返回callback(data)。安全隐患：完全信任第三方脚本(可执行任意JS)，仅限GET，无错误处理。postMessage安全：始终校验event.origin（白名单），校验event.source，结构化克隆数据。Nginx代理：绕过浏览器同源策略(同域)，但增加服务器流量(CORS由浏览器处理)。内网服务用Nginx，公开API用CORS。"
+  },
+  {
+    "title": "浏览器缓存策略：强缓存/协商缓存/Service Worker",
+    "difficulty": "medium",
+    "categoryName": "浏览器原理",
+    "categorySlug": "browser",
+    "tagNames": [
+      "缓存",
+      "Service Worker",
+      "HTTP"
+    ],
+    "content": "## 题目\n强缓存(Cache-Control/Expires)和协商缓存(ETag/Last-Modified)的区别及优先级？Cache-Control的public/private/no-cache/no-store/immutable各是什么意思？Service Worker缓存可以做到哪些HTTP缓存做不到的事？如何设计\"离线可用\"的缓存策略？stale-while-revalidate的适用场景？",
+    "answer": "强缓存：不发请求，直接从(disk/memory cache)取(Cache-Control:max-age、Expires)。协商缓存：发请求带If-None-Match/If-Modified-Since，304表示未修改(ETag/Last-Modified)。优先级：强缓存>协商缓存(must-revalidate绕过强缓存)。public:CDN可缓存。private:仅浏览器。no-cache:每次验证(协商)。no-store:完全不缓存。immutable:永不变化(指纹文件名配合使用)。SW可做：离线访问、后台同步、推送通知、请求拦截和修改、自定义缓存策略(比HTTP缓存灵活得多)。离线策略：Cache-First(静态资源)→Network-First(API)→Network-Only(实时数据)→Stale-While-Revalidate(先返回缓存再后台更新)。"
+  },
+  {
+    "title": "HTTP/2 多路复用 vs HTTP/1.1 队头阻塞 vs HTTP/3 QUIC",
+    "difficulty": "hard",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "HTTP/2",
+      "HTTP/3",
+      "QUIC"
+    ],
+    "content": "## 题目\nHTTP/1.1的队头阻塞(Head-of-Line Blocking)是怎么回事？HTTP/2用什么机制解决了(Stream+Frame)？HTTP/2的TCP层队头阻塞是什么意思？HTTP/3 QUIC如何彻底解决？HPACK vs QPACK头部压缩的区别？",
+    "answer": "HTTP/1.1 HOLB：同一连接上请求必须按序响应，前一响应阻塞后续。HTTP/2解决：单TCP连接上多Stream并发，每个Stream切为Frame交错传输。但TCP层HOLB：TCP丢失一个包阻塞所有Stream(因为TCP保证按序交付)。HTTP/3 QUIC：基于UDP，每个Stream独立传输，丢包只影响单个Stream。HPACK(HTTP/2)：动态表需要严格按序解码→与TCP绑定。QPACK(HTTP/3)：动态表更新与Stream解耦，避免HOLB。QUIC额外优势：0-RTT握手(TLS1.3集成在QUIC中)、连接迁移(切换网络IP不变)。"
+  },
+  {
+    "title": "WebSocket 心跳机制与重连策略",
+    "difficulty": "medium",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "WebSocket",
+      "心跳",
+      "重连"
+    ],
+    "content": "## 题目\n为什么WebSocket需要心跳？ping/pong帧在协议层如何工作的？设计一个健壮的WebSocket重连机制：1)指数退避(1s→2s→4s→...max 30s) 2)页面不可见时暂停重连 3)网络恢复后自动重连。如何处理重连期间丢失的消息（消息队列/seq号确认）？",
+    "answer": "心跳目的：1)检测连接存活(中间代理可能静默断开) 2)保持NAT/防火墙映射不过期。WS协议层ping帧(0x9)和pong帧(0xA)由浏览器自动处理。重连设计：delay = min(initialDelay * 2^retries + jitter, maxDelay)。Page Visibility API监听visibilitychange→不可见时停止重连节省资源。navigator.onLine + online/offline事件监听网络状态变化。消息丢失处理：客户端维护seq号(最近一条已确认)，重连时发送lastSeq，服务端补推丢失消息。或本地IndexedDB离线队列。"
+  },
+  {
+    "title": "RESTful vs GraphQL vs tRPC 的选型",
+    "difficulty": "medium",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "API设计",
+      "REST",
+      "GraphQL",
+      "tRPC"
+    ],
+    "content": "## 题目\nREST的over-fetching/under-fetching是什么？GraphQL如何通过声明式查询解决？tRPC的核心价值（端到端类型安全）是什么？三者在以下场景如何选型：1)B端管理后台 2)移动App API 3)内部微服务间通信 4)第三方开放API？",
+    "answer": "REST：一个/GET /users返回所有字段(over-fetching)，关联数据需多请求(under-fetching)。GraphQL：客户端指定字段，一次请求返回精准数据。tRPC：前后端共享TS类型，编译时保证API契约，无需生成SDK。选型：B端→tRPC(内部项目类型安全最大化)。移动App→GraphQL(灵活的字段选择节省流量)。微服务→tRPC或gRPC(强类型+高性能)。开放API→REST(生态成熟、文档工具丰富、缓存友好、无学习成本)。"
+  },
+  {
+    "title": "请求合并与去重：实现一个通用的请求管理器",
+    "difficulty": "hard",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "请求合并",
+      "去重",
+      "缓存"
+    ],
+    "content": "## 题目\n实现一个通用的请求管理器，支持以下特性：\n1.请求去重：同一个API在同一时刻被多处调用，只发一次请求\n2.请求合并：100ms内的多次调用合并为一次批量请求\n3.缓存策略：可配置TTL + stale-while-revalidate\n4.请求取消：组件卸载时自动取消对应的pending请求\n请写出核心实现代码。",
+    "answer": "不同场景用不同技术：去重(同参数同时间)→用Map<key, Promise>存inflight请求，后续调用直接返回同一Promise。合并→buffer + debounce 100ms + Promise批量resolve。SWR(stale-while-revalidate)→返回缓存数据→后台fetch更新缓存。请求取消→AbortController + signal，组件卸载时abort()。\n\n核心代码：class RequestManager { inflight=new Map(); cache=new Map(); async fetch(key, fetcher, options) { const cached = this.cache.get(key); if (cached && !cached.stale) return cached.data; const inflight = this.inflight.get(key); if (inflight) return inflight; const p = fetcher().then(r=>{this.cache.set(key,{data:r,ts:Date.now()});return r}).finally(()=>this.inflight.delete(key)); this.inflight.set(key, p); return p; } }"
+  },
+  {
+    "title": "如何设计一个前端 API 层的错误处理与重试体系？",
+    "difficulty": "medium",
+    "categoryName": "网络与协议",
+    "categorySlug": "network",
+    "tagNames": [
+      "API",
+      "错误处理",
+      "重试"
+    ],
+    "content": "## 题目\n前端API层错误处理的分层策略：网络错误(Network Error) vs 业务错误(Business Error) vs 认证错误(Auth Error)分别如何处理？重试策略：什么错误该重试什么不该？如何实现全局错误拦截器+局部错误覆盖？如何设计统一的错误码枚举和用户提示文案映射？",
+    "answer": "分层：网络错误(retryable，fetch自身catch)→业务错误(后端返回error code，不重试，展示提示)→认证错误(401→refreshToken重试一次→失败跳登录)。重试规则：GET/HEAD可重试(幂等)，POST慎重重试(可能重复创建)，5xx可重试(服务端临时故障)，4xx不重试(客户端错误)。全局拦截器(请求/响应拦截器+错误码映射表)+ 局部覆盖(请求options中errorHandler)。错误码体系：errorCode(程序用) + message(默认文案) + userMessage(用户可见)。统一Toast/Modal展示。"
+  },
+  {
+    "title": "从零搭建前端脚手架的设计思路",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "脚手架",
+      "CLI",
+      "构建工具"
+    ],
+    "content": "## 题目\n如何从零设计一个前端脚手架(create-xxx-app)？需要考虑：模板管理(如何支持多个模板)、版本管理(如何检测更新)、交互式CLI(如何用inquirer做选择)、包管理器检测(自动选npm/pnpm/yarn)、安装后的提示(postinstall message)。选择一个你熟悉的实现方式描述核心流程。",
+    "answer": "核心流程：1)bin入口(map到dist/cli.js) 2)commander/yargs解析命令行 3)inquirer交互式问答(项目名/模板/功能选项) 4)模板下载：从GitHub release下载tar.gz或git clone模板仓库(degit) 5)动态替换模板中占位符(项目名/作者/版本) 6)自动检测包管理器(检查lock文件或user-agent) 7)spinner动画显示进度 8)postinstall提示(下一步命令+文档链接)。版本检查：用update-notifier(对比npm registry上latest版本)。模板管理：templates/目录下多模板+template.json描述文件。"
+  },
+  {
+    "title": "AST 在代码转换中的应用：Babel 插件原理",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "AST",
+      "Babel",
+      "编译器"
+    ],
+    "content": "## 题目\nBabel的编译流程(parse→transform→generate)各阶段做什么？如何写一个Babel插件：实现将console.log替换为自定义logger.log(附带文件名和行号)？为什么import语句不能被转换成CJS的require后还保留ESM特性？Babel和esbuild在AST处理上有何本质区别(修改AST vs 生成新AST)？",
+    "answer": "Babel流程：parse(@babel/parser生成AST)→transform(遍历AST，visitor模式匹配Node，操作path.replaceWith等)→generate(@babel/generator AST→代码)。插件核心：export default function({ types:t }) { return { visitor: { CallExpression(path){ if(isConsoleLog(path)) path.replaceWith(t.callExpression(t.memberExpression(t.identifier('logger'),t.identifier('log')), path.node.arguments)); }}};}。Babel修改原AST(操作path)，esbuild和swc生成全新AST(不可变，更高效)。import转换问题：import有live binding、hoisting、静态分析等特性，CJS require只是简单的值拷贝和运行时加载，语义不等价。"
+  },
+  {
+    "title": "Monorepo 架构：pnpm workspace + turborepo 最佳实践",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "Monorepo",
+      "pnpm",
+      "turborepo"
+    ],
+    "content": "## 题目\nMonorepo解决了多包管理的哪些痛点？pnpm的硬链接+符号链接与npm/yarn的node_modules结构有何区别(幽灵依赖问题)？turborepo的缓存策略(turbo.json中的pipeline与dependsOn)如何做到增量构建？Nx和turborepo各有什么优劣？如何在Monorepo中管理共享配置(tsconfig/eslint/prettier)？",
+    "answer": "Monorepo解决：跨包代码共享(workspace:*)、统一版本管理、原子化跨包变更、统一工具链。pnpm：全局store硬链接→node_modules符号链接，所有依赖物理上只存一份。幽灵依赖：npm/yarn的扁平化导致可以访问未声明的依赖；pnpm严格遵循依赖树，未声明则不可访问。turborepo：pipeline配置任务依赖关系，dependsOn声明上游任务，outputs定义缓存文件，远程缓存实现CI间共享。管理共享配置：packages/config下eslint-config/tsconfig等包，各子包extends引用。Nx更重量级(插件生态更丰富)，turborepo更轻量。"
+  },
+  {
+    "title": "前端错误监控与日志体系设计",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "错误监控",
+      "Sentry",
+      "日志"
+    ],
+    "content": "## 题目\n设计一套前端错误监控系统：\n1.如何捕获JS错误(window.onerror)、Promise错误(unhandledrejection)、资源加载错误、React ErrorBoundary？\n2.错误信息中需要包含哪些上下文(用户行为栈/网络请求/设备信息)？SourceMap如何部署(注意安全)？\n3.如何区分误告警和真错误？错误去重(指纹)策略？\n4.日志的采样策略(全量vs采样)和敏感信息脱敏？",
+    "answer": "捕获策略：window.onerror(JS运行时错误+堆栈)、window.addEventListener('unhandledrejection')、document.addEventListener('error',capture:true)资源加载错误、ErrorBoundary(React组件树错误)。上下文：用户行为录制(点击/输入快照)、最近5次请求、设备信息(UA/screen/network)、页面状态(redux store快照，注意脱敏)。SourceMap：上传到Sentry等私有服务(非公开CDN)，publicPath指向私有域名加token。去重：错误类型+堆栈前N行的hash作为指纹。误告警：第三方脚本错误(正则过滤)、浏览器扩展注入的错误。采样：随机采样(10%)按错误类型，保证同类型错误被采样到。脱敏：手机号/身份证号/银行卡用正则替换为***。"
+  },
+  {
+    "title": "自动化测试策略：单元/集成/E2E 的投入产出比",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "单元测试",
+      "E2E"
+    ],
+    "content": "## 题目\n测试金字塔(单元→集成→E2E)的含义和合理比例？什么代码适合单元测试，什么必须E2E覆盖？前端单元测试中mock的边界（mock API vs mock 组件 vs mock 模块）？如何用Testing Library做可访问性驱动的组件测试？快照测试(snapshot testing)的利弊？",
+    "answer": "金字塔：大量单元测试(快速、稳定、定位精准)→适量集成测试(验证模块交互)→少量E2E(验证核心用户旅程)。比例参考：70%单元+20%集成+10%E2E。纯函数/工具→单元。组件交互→集成(Testing Library render+fireEvent+expect)。核心流程(登录/支付)→E2E(Playwright/Cypress)。mock边界：API用MSW(拦截网络层而非mock函数)、避免mock组件内部实现(测试行为不测试实现)。快照：初始开发快照快速回归UI，但容易被无脑更新、过大的快照不可读。建议：小快照+inline snapshot+语义化自定义序列化器。"
+  },
+  {
+    "title": "Node.js Stream 的背压机制与管道模式",
+    "difficulty": "hard",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "Stream",
+      "背压"
+    ],
+    "content": "## 题目\n什么是Stream背压（backpressure）？Readable/Transform/Writable如何协调速率？pipe() vs pipeline()的区别？如何用Stream处理大文件(10GB)而不撑爆内存？实现一个可读流：每秒产生一个递增数字，消费者处理慢时自动暂停。",
+    "answer": "背压：生产速度>消费速度时，Writable的write()返回false通知上游暂停，drain事件恢复。pipe()自动处理背压但错误处理不好(不会destroy)。pipeline(stream.promises)自动处理错误和清理。大文件处理：fs.createReadStream → Transform(按行/按块处理) → fs.createWriteStream，内存中同时只存一块数据。自定义Readable：read()中push(data)，消费者调用read()，当push返回false(highWaterMark满)时暂停。Writeable：write()返回false时停止push，监听drain事件恢复。关键设计：highWaterMark控制缓冲区大小。"
+  },
+  {
+    "title": "Node.js 进程管理：Cluster vs Worker Threads vs Child Process",
+    "difficulty": "medium",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "Cluster",
+      "Worker"
+    ],
+    "content": "## 题目\nCluster(多进程)、Worker Threads(多线程)、Child Process(子进程)三者区别和适用场景？Cluster如何共享端口？Worker Threads和浏览器Web Worker的本质区别？为什么Node.js可以用require而Worker Threads需要import/require？如何在Worker Threads间传递大数据（SharedArrayBuffer vs TransferList）？",
+    "answer": "Cluster：fork多个进程(独立V8+独立内存)，IPC通信，适合CPU密集型+HTTP服务(利用多核)。通过主进程监听端口→round-robin分发或SO_REUSEADDR让内核分发。Worker Threads：单进程多线程(共享V8部分内存)，SharedArrayBuffer共享内存+Atomics同步，适合计算密集型(图片处理/加密)。Child Process：独立进程，通过stdio/IPC通信，适合非Node任务(调用Python/ffmpeg)。Worker vs Web Worker：Node Worker可require(Node API)、SharedArrayBuffer、更灵活的消息传递。大数据传递：TransferList(零拷贝转移所有权，原上下文不可再用)、SharedArrayBuffer(多线程共享读写需Atomics协调)。"
+  },
+  {
+    "title": "Express/Koa 洋葱模型的实现原理",
+    "difficulty": "medium",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "Koa",
+      "中间件"
+    ],
+    "content": "## 题目\nKoa的洋葱模型（onion model）是什么？为什么Express的中间件不是真正洋葱？async/await如何让Koa实现真正的洋葱？实现一个compose函数，将多个中间件组合成洋葱调用。Koa的ctx(上下文)对象的设计模式（委托模式）？",
+    "answer": "洋葱模型：请求从外到内穿过所有中间件，响应从内到外返回，形状如洋葱。Express中间件是线性的（下一个中间件执行完后不回到上一个的后续代码）。Koa用async/await实现：next()返回Promise，await next()让出执行权→内部中间件执行完→回到外部中间件继续执行next()后的代码。compose实现：function compose(middlewares) { return function(ctx) { let i = -1; return dispatch(0); function dispatch(idx) { if (idx<=i) return Promise.reject(new Error('next() called multiple times')); i=idx; const fn = middlewares[idx]; if(!fn) return Promise.resolve(); return Promise.resolve(fn(ctx, ()=>dispatch(idx+1))); } } }。ctx用delegates库(访问ctx.request.body等于ctx.body)。"
+  },
+  {
+    "title": "Node.js 内存泄漏排查实战",
+    "difficulty": "medium",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "内存泄漏",
+      "排查"
+    ],
+    "content": "## 题目\nNode.js服务内存持续增长如何排查？heapdump和Chrome DevTools Memory分析流程？常见的Node.js内存泄漏原因(全局变量/闭包/事件监听器未清理/Stream未销毁)？--max-old-space-size参数作用？Buffer和ArrayBuffer的内存管理区别？",
+    "answer": "排查流程：1)heapdump生成.heapsnapshot(进程启动时+30min后+疑似泄漏时) 2)Chrome DevTools Memory load三个snapshot 3)Comparison视图看Delta增长最多的对象 4)定位Retainers链找到持有引用不释放的代码。常见泄漏：global挂载数据、Express middleware内创建大对象但未释放、EventEmitter.on未off、Stream未destroy、setInterval未clear。--max-old-space-size设置V8老生代堆上限(默认约1.4GB)，接近时触发GC或OOM。Buffer是Node.js特有(堆外内存，不受V8 GC限制)，ArrayBuffer是JS标准(受GC管理)，Buffer.allocUnsafe分配未初始化内存(性能好但含旧数据)。"
+  },
+  {
+    "title": "XSS 攻击类型与 CSP 防御体系",
+    "difficulty": "hard",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "XSS",
+      "CSP"
+    ],
+    "content": "## 题目\n存储型/反射型/DOM型XSS的区别和攻击向量？为什么React默认防XSS(JSX自动转义)但仍然可能被攻击(dangerouslySetInnerHTML/a.href)？CSP(Content Security Policy)的nonce和hash模式各适用什么场景？strict-dynamic的意义？如何设计CSP的白名单同时不破坏第三方脚本？",
+    "answer": "存储型：恶意代码存数据库(每条用户都受影响) 反射型：URL参数直接拼入HTML(针对性攻击) DOM型：JS操作DOM时拼接不可信数据。React防XSS：JSX自动转义(React.createElement)，但dangerouslySetInnerHTML、a.href=javascript:、用户输入作为props仍危险。CSP nonce：每次请求生成随机nonce值(script nonce=xxx)，适合SSR。CSP hash：脚本内联时计算sha256哈希写入策略头，适合静态脚本。strict-dynamic：信任已允许脚本动态创建的脚本，减少白名单。第三方脚本：用strict-dynamic+nonce只允许根脚本，后续动态加载自动信任。"
+  },
+  {
+    "title": "CSRF 攻击原理与 SameSite Cookie 防御",
+    "difficulty": "medium",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "CSRF",
+      "Cookie"
+    ],
+    "content": "## 题目\nCSRF攻击的完整流程(以转账为例)？为什么SameSite=Lax可以防御大部分CSRF？SameSite=Strict和Lax的行为差异？双重Cookie验证(Double Submit Cookie)的原理？Token方案(CSRF Token放在哪里？header还是cookie？)？",
+    "answer": "CSRF流程：用户登录bank.com→黑客诱导访问evil.com→evil.com自动提交form到bank.com/transfer→浏览器自动带Cookie→服务端以为是用户操作。SameSite=Lax：跨站GET可带Cookie(如链接跳转)，跨站POST不带Cookie→防御写操作CSRF。SameSite=Strict：完全不带Cookie(最安全但影响体验，如从邮件点链接跳转已登录站点会登出)。双Cookie验证：服务端在Cookie中设随机token，前端从Cookie读token放自定义header(X-CSRF-Token)，服务端比较Cookie中的token和header中的token。攻击者无法读取目标域Cookie(同源策略)，也无法设置自定义header(跨域限制)。"
+  },
+  {
+    "title": "前端加密的边界：什么能做，什么不能做",
+    "difficulty": "medium",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "加密",
+      "密码学"
+    ],
+    "content": "## 题目\n前端加密为什么不能替代HTTPS？前端可以做哪些加密工作（传输前加密/数据脱敏/哈希）而哪些必须后端做（密码验证/权限校验/业务规则）？Web Crypto API能做什么(RSA/AES/SHA)？前端做RSA加密传输密码的意义和局限性？如何做前端敏感信息的脱敏展示？",
+    "answer": "前端加密不替代HTTPS：因为加密JS代码对攻击者可见(可逆向/篡改)，密钥无法安全存储。前端能做：传输前二次加密(密码→RSA公钥加密→后端私钥解密，防中间人，但公钥本身需HTTPS保护)、脱敏展示(手机号138****5678、身份证前3后4)、文件SHA-256哈希(秒传/去重)。后端独占：密码验证、权限控制、业务规则校验。Web Crypto API：crypto.subtle.encrypt/decrypt/digest/importKey，支持RSA/AES/SHA。加密局限：若攻击者控制了前端，可拦截用户输入在加密前获取明文。脱敏需前后端一致：列表API返回脱敏数据，详情需二次确认。"
+  },
+  {
+    "title": "OAuth 2.0 授权码流程与 PKCE 扩展",
+    "difficulty": "medium",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "OAuth",
+      "PKCE"
+    ],
+    "content": "## 题目\nOAuth 2.0的授权码流程(Authorization Code Flow)为什么比隐式流程(Implicit Flow)更安全？PKCE(Proof Key for Code Exchange)解决了什么问题？为什么SPA不再推荐用Implicit Flow而推荐Auth Code + PKCE？refresh token应该存在哪里(SPA场景的安全性权衡)？",
+    "answer": "授权码 vs 隐式：隐式直接返回access_token在URL fragment中(暴露在浏览器历史/redirect URL日志中)，授权码先返回一次性code，后端用code+secret换token(access_token不经过浏览器)。PKCE机制：客户端生成code_verifier(随机字符串)→code_challenge=SHA256(verifier)→授权时发送challenge→换token时发送verifier，即使code被截获也无法换取token(无verifier)。SPA+PKCE：无client_secret也能安全使用Auth Code Flow。refresh token存储：HttpOnly Cookie(最安全但缺跨域灵活性)、Service Worker中(中等)、localStorage(最不安全，XSS可读)。权衡：使用BFF(Backend For Frontend)模式，token存在服务端session中，前端只持session cookie。"
+  },
+  {
+    "title": "前端插件系统设计：实现一个可扩展的插件架构",
+    "difficulty": "hard",
+    "categoryName": "设计模式",
+    "categorySlug": "design-patterns",
+    "tagNames": [
+      "设计模式",
+      "插件",
+      "架构"
+    ],
+    "content": "## 题目\n如何在前端项目中设计一个插件系统？以Webpack插件(tapable钩子)或VSCode扩展(contributes)为参考，实现一个简化版插件系统：\n1.定义生命周期钩子(同步/异步/瀑布)\n2.插件注册(plugin.apply方法)\n3.钩子按优先级排序执行\n4.支持插件间通信（事件总线）\n画架构图并写核心代码。",
+    "answer": "核心设计：使用Tapable风格的钩子系统。\n\nclass PluginSystem {\n  hooks = { beforeInit: new SyncHook(), afterInit: new AsyncHook(), transform: new WaterfallHook() };\n  register(plugin) { plugin.apply(this); }\n  async start() { this.hooks.beforeInit.call(); await this.hooks.afterInit.promise(); }\n}\n\nclass SyncHook {\n  taps=[]; tap(name,fn,priority=0){this.taps.push({name,fn,priority});this.taps.sort((a,b)=>b.priority-a.priority)}\n  call(...args){for(const t of this.taps)t.fn(...args)}\n}\n\nclass WaterfallHook {\n  taps=[]; tap(name,fn){this.taps.push({name,fn})}\n  call(value){return this.taps.reduce((acc,t)=>t.fn(acc),value)}\n}\n\n// 插件定义\nconst myPlugin = { apply(system) { system.hooks.transform.tap('my', v=>v+'!'); } };\n\n关键：钩子类型决定了执行模式(SyncHook串行/AsyncParallelHook并行/BailHook短路/WaterfallHook管道)。优先级排序让核心插件先执行。事件总线用于插件间松耦合通信。"
+  },
+  {
+    "title": "发布-订阅模式 vs 观察者模式 vs 事件总线的区别",
+    "difficulty": "medium",
+    "categoryName": "设计模式",
+    "categorySlug": "design-patterns",
+    "tagNames": [
+      "设计模式",
+      "观察者",
+      "发布订阅"
+    ],
+    "content": "## 题目\n观察者模式(Observer)和发布-订阅模式(Pub-Sub)有什么本质区别（调度中心）？EventEmitter的on/emit/once/off如何实现？如何用发布-订阅模式解耦React组件间的通信？EventEmitter的监听器数量有上限吗？内存泄漏如何处理？",
+    "answer": "核心区别：观察者模式中Subject直接维护Observer列表，调用Observer.update()（直接耦合）。发布-订阅有独立的调度中心(Event Channel)，Publisher和Subscriber互不知晓（完全解耦）。\n\n简单EventEmitter：\nclass EventBus { events=new Map(); on(event,fn){ if(!this.events.has(event))this.events.set(event,[]); this.events.get(event).push(fn); } emit(event,...args){ (this.events.get(event)||[]).forEach(fn=>fn(...args)); } off(event,fn){ const fns=this.events.get(event); if(fns){ const i=fns.indexOf(fn); if(i>-1)fns.splice(i,1); } } }\n\nReact解耦：非父子组件通信可共用一个EventBus实例。内存泄漏：组件卸载时必须off监听。Node默认每个event最多10个监听器(可setMaxListeners调整)。once：执行一次后自动off。"
+  },
+  {
+    "title": "前端中的策略模式与依赖注入实践",
+    "difficulty": "medium",
+    "categoryName": "设计模式",
+    "categorySlug": "design-patterns",
+    "tagNames": [
+      "设计模式",
+      "策略模式",
+      "依赖注入"
+    ],
+    "content": "## 题目\n策略模式在前端的实际应用场景（表单校验/支付方式/定价规则）？如何用依赖注入(IoC容器)管理大型应用的服务依赖？不用DI容器时，模块间循环依赖如何解决？用inversify/token-injection或自实现简易DI容器的思路？",
+    "answer": "策略模式实战：表单校验策略(validatorMap={email:emailValidator, phone:phoneValidator})，根据不同字段类型切换校验逻辑。支付方式：支付宝/微信/银联各自实现PayStrategy接口。DI容器核心：Map<token, factory>服务注册表+单例/瞬态生命周期管理。\n\n简易DI：\nclass Container { services=new Map(); register(token, factory, {singleton=true}) { this.services.set(token, {factory,instance:null,singleton}); }\nresolve(token){ const s=this.services.get(token); if(s.singleton){ if(!s.instance)s.instance=s.factory(this); return s.instance; } return s.factory(this); } }\n\n解循环依赖：用forwardRef模式(如Angular的Inject(forwardRef(()=>Service))，延迟解析token到使用时而非注册时。或用事件/回调模式打破直接的模块依赖。"
+  },
+  {
+    "title": "前端单元测试的 Mock 策略：从 API 到时间",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "Mock",
+      "单元测试"
+    ],
+    "content": "## 题目\n前端测试中需要Mock什么？MSW(Mock Service Worker)相比jest.mock的优势？如何Mock定时器(jest.useFakeTimers)？如何测试异步组件（waitFor/findBy）？什么场景适合快照测试，什么场景不适合？如何测试自定义Hook(renderHook)？",
+    "answer": "Mock对象：API请求(MSW网络层拦截)、时间(setTimeout/setInterval用fake timers)、随机数(Math.random mock)、浏览器API(localStorage/IntersectionObserver)。MSW vs jest.mock：MSW拦截网络层(被测代码无感知)，jest.mock替换模块(侵入性强)。fake timers：jest.useFakeTimers()+jest.advanceTimersByTime(1000)，测试useInterval等定时逻辑。异步测试：waitFor(()=>expect(...))轮询、findBy*内置超时、act包裹状态更新。快照适合：纯展示组件（不变更频繁）、错误消息（语义化）。不适合：复杂交互组件、过大的快照。renderHook：@testing-library/react renderHook(()=>useMyHook())，返回{result:{current},rerender,unmount}。"
+  },
+  {
+    "title": "组件测试：如何用 Testing Library 做可访问性驱动的测试",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "Testing Library",
+      "可访问性"
+    ],
+    "content": "## 题目\nTesting Library的设计哲学(测试用户行为而非实现细节)体现在哪些API设计上？getByRole为什么优于getByTestId？如何测试表单交互(填写→提交→验证错误→成功)？如何测试键盘导航和无障碍功能？什么情况下仍需要data-testid？",
+    "answer": "设计哲学：DOM Testing Library的核心原则——测试越像软件被使用的方式越可靠。getByRole(按ARIA角色查找)→最接近用户和屏幕阅读器→优先使用；getByLabelText(表单标签)→其次；getByText(文本内容)→再次；getByTestId→最后选择(只看data-testid)。表单测试流程：userEvent.type(input,'text')→userEvent.click(submitBtn)→waitFor(()=>expect(errorMsg).toBeVisible())→修正→userEvent.click→expect(successMsg)。键盘测试：userEvent.tab()→{arrowdown}→{enter}。data-testid使用场景：动态生成内容且无语义角色、单元测试非交互的展示逻辑。"
+  },
+  {
+    "title": "E2E 测试：Playwright vs Cypress 的实际体验对比",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "E2E",
+      "Playwright"
+    ],
+    "content": "## 题目\nPlaywright和Cypress在架构上的核心差异（浏览器通信方式/多标签页支持/多浏览器）？Playwright的auto-waiting和Web-First断言解决了什么痛点？如何设计E2E测试的fixture和seed数据策略？E2E测试与CI的集成(video/retry/trace)？如何测试文件上传/拖拽/剪贴板这些复杂交互？",
+    "answer": "架构差异：Cypress运行在浏览器同一事件循环中(通过代理注入)，无法多标签页；Playwright通过CDP/WebSocket与浏览器独立通信，支持多标签页/多浏览器(Chromium+Firefox+WebKit)。auto-waiting：Playwright自动等待元素可操作(actionability checks：可见→稳定→接收事件→无动画)。Web-First断言：expect(locator).toBeVisible()自动重试，无需手动waitFor。Fixture策略：API seed或DB seed每次测试前重置为已知状态(test.beforeEach)。CI集成：视频录制+失败截图+trace viewer(时间轴回放每一步)。文件上传：page.setInputFiles('input[type=file]', 'path/to/file.pdf')。拖拽：page.dragAndDrop(source, target)。剪贴板：grant permissions→navigator.clipboard.writeText→Ctrl+V。"
+  },
+  {
+    "title": "Webpack Loader vs Plugin 的本质区别 + 手写 Loader",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "Webpack",
+      "Loader",
+      "Plugin"
+    ],
+    "content": "## 题目\nLoader和Plugin的设计目的和运行时机有何区别？手写一个Webpack Loader：将代码中的${VAR_NAME}占位符替换为构建时传入的环境变量值。Webpack的Tapable钩子体系(SyncHook/AsyncSeriesHook)如何工作？Complier和Compilation对象的区别？",
+    "answer": "Loader：文件级别的转换(非JS→JS模块)，在模块解析阶段执行，链式调用(pitch→normal，从右到左)。Plugin：构建全流程介入(从开始到输出)，通过Tapable钩子注册事件监听，可以修改compilation对象(修改chunk/asset)。\n\n手写Loader：module.exports = function(source) { const options = this.getOptions(); return source.replace(/\\$\\{(\\w+)\\}/g, (_, key) => options.vars[key] || ''); };\n\nTapable钩子：SyncHook(同步串行)、SyncBailHook(短路)、AsyncSeriesHook(异步串行)、AsyncParallelHook(异步并行)。Compiler：整个构建过程的对象(单例)。Compilation：每次构建的对象(含modules/chunks/assets)，watch模式每次重新构建产生新的Compilation。Plugin通过compiler.hooks.compilation获取compilation，再通过compilation.hooks来操作模块和资源。"
+  },
+  {
+    "title": "Vite 为什么比 Webpack 快？ESBuild + Rollup 双引擎架构",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "Vite",
+      "Webpack",
+      "构建工具"
+    ],
+    "content": "## 题目\nVite开发模式为什么快？Native ESM + 按需编译 vs Webpack全量打包的架构区别？ESBuild速度快的底层原因(Go语言/无AST转换/并行)？预构建(Pre-bundling)做了什么？生产环境为什么用Rollup而不是ESBuild？Vite的HMR(热更新)为什么快(精准失效+ESM热替换)？",
+    "answer": "Vite快的原因：Dev模式直接用浏览器原生ESM，文件按需编译(仅编译请求的模块)，Webpack需全量打包。ESBuild：Go编写(非JS单线程)、流式架构(无完整AST)、多核并行→快10-100倍。预构建：将CJS包转为ESM、合并小模块减少请求量、缓存到node_modules/.vite。生产用Rollup：ESbuild定位是转译工具(esbuild不擅长code splitting、plugin生态不够丰富、分包策略不成熟)，Rollup更成熟稳定。HMR：仅失效受影响的模块链(精准，不像Webpack刷新整个chunk)，原生ESM直接替换模块。"
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "title": "如何在 qiankun 微前端架构中实现主子应用路由同步和嵌套微应用加载？",
+    "difficulty": "hard",
+    "categoryName": "前端架构",
+    "categorySlug": "frontend-architecture",
+    "tagNames": ["微前端", "qiankun"],
+    "content": "## 背景\n\n在一个大型政采平台中，使用了 qiankun 作为微前端框架。主应用负责整体布局和权限管理，子应用（如采购文件编制、智能巡检、AI Agent）独立开发部署。\n\n## 题目\n\n1. 主子应用之间如何保持路由同步？当用户在子应用内切换路由时，主应用的 URL 需要同步更新；当用户通过浏览器前进/后退时，子应用需要正确响应。请设计一套可行的方案。\n\n2. 如果出现嵌套微应用场景——子应用 A 内部又通过 loadMicroApp 加载子应用 B，如何管理生命周期、避免内存泄漏，并处理路由冲突？\n\n3. 如何确保多个子应用之间不会因全局 CSS/JS 污染而互相影响？请从沙箱隔离和样式隔离两个角度回答。",
+    "answer": "## 路由同步方案\n\n### 双向同步机制\n\n子应用内路由变化通过 postMessage 通知主应用；主应用更新 browser URL 和侧边栏高亮。浏览器前进/后退时，主应用解析 URL 并通过 history.push 通知子应用。核心是用 isSyncing 锁防止死循环。\n\n### 关键点\n- 使用 postMessage 作为通信桥梁，而非直接操作 window.history\n- isSyncing 锁持续 50ms，防止双向触发\n- 主应用菜单点击触发 main-app-menu-change 自定义事件\n\n## 嵌套微应用生命周期\n\nLiteMicroManager 管理嵌套实例：mount 前等待容器 DOM（最多重试 10 次），清理旧实例避免重复挂载。通过 loadMicroApp 的 beforeLoad/afterMount/beforeUnmount/afterUnmount 钩子管理。destroy 时递归卸载所有子应用。\n\n检测子应用渲染完成：轮询容器内是否出现 [data-name] 属性（最多 60 次）。\n\n## 沙箱与样式隔离\n\nJS 沙箱：Proxy 沙箱（劫持 window） + 快照沙箱（降级，mount 前保存/unmount 后恢复）。\n样式隔离：Shadow DOM（最彻底但事件穿透问题）→ CSS Modules → Scoped CSS（PostCSS 自动前缀）→ 命名空间规范。\n\n降级：加载失败显示友好错误页 + 手动重试，Sentry 记录 name + entry + 错误堆栈。"
+  },
+  {
+    "title": "前端领域驱动设计：如何构建 Schema 驱动的复杂表单系统？",
+    "difficulty": "hard",
+    "categoryName": "前端架构",
+    "categorySlug": "frontend-architecture",
+    "tagNames": ["DDD", "Schema 驱动"],
+    "content": "## 背景\n\n在一个政府采购文件编制系统中，采购文件包含 14+ 个业务模块（基本信息、供应商须知、资格审查、评分方法、合同模板等），每个模块都有独立的表单字段、校验规则和提交流程。\n\n## 题目\n\n1. 如何在前端实现领域驱动设计（DDD）？请设计 Entity → Converter (DTO/VO) → Model → Schema 的分层架构，并说明每层的职责。\n\n2. 什么是 Schema 驱动的表单引擎？与传统的 JSX 手写表单相比，它解决了什么问题？\n\n3. 当后端接口的数据结构（DTO）与前端表单需要的视图模型（VO）不一致时，Converter 层应该如何设计以保证数据转换的可测试性和可维护性？\n\n提示：DTO 可能是扁平的（qualificationReviewMethod: number），VO 可能是嵌套的（review: { method: 'post' | 'pre' }），且 VO 包含前端特有字段（isDraft）。",
+    "answer": "## 前端 DDD 分层架构\n\n### 1. Domain Layer（实体层 - entity.ts）\n纯业务逻辑，不依赖 UI 框架。File 类聚合 14 个实体，提供 fetch/save 方法，内部调用 Converter 做 DTO ↔ Entity 转换。多态场景（采购文件 vs 更正文件）通过不同的 Converter 实现。\n\n### 2. Converter Layer（转换层 - converter.ts）\n纯函数，负责 DTO ↔ VO ↔ Entity 三向转换。关键原则：纯函数无副作用（易测试）、显式映射（不丢字段）、VO 包含前端特有字段（isDraft, isExpanded）、TypeScript 类型系统保证完整性。\n\n### 3. Model Layer（MobX 状态管理层 - model.ts）\n将 VO 转为 ZeroForm Schema 描述（fields 数组），每个 field 包含 name/type/enum/value。Schema 被 ZeroForm 引擎渲染为完整表单 UI。\n\n## Schema 驱动 vs JSX 手写\n\nSchema 驱动适用于管理后台、政府表单等配置化页面——50+ 字段表单可零代码新增，后端配置即生效无需前端发版。JSX 手写适用于交互复杂、高度定制的页面。\n\n核心价值：把表单从「代码」变为「数据」。"
+  },
+  {
+    "title": "如何用 Canvas 实现大文件 PDF 的虚拟滚动渲染与多层叠加？",
+    "difficulty": "hard",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": ["PDF 渲染", "虚拟滚动", "Canvas"],
+    "content": "## 背景\n\n一个智能巡检平台需要在前端展示投标文件的 PDF，单文件可能超过 500 页，每页需要以高分辨率渲染（2x retina）。同时还需要在 PDF 上叠加文本高亮层来标注相似文档的差异点。\n\n## 题目\n\n1. 使用 pdfjs-dist 渲染 PDF 时，如何实现虚拟滚动来避免一次性渲染所有页面导致的性能问题？\n\n2. Canvas 渲染时如何管理多层叠加（PDF 内容层 + 文本选择层 + 高亮标注层）？React 的声明式渲染与 Canvas 的命令式渲染如何协调？\n\n3. 使用 html2canvas + jsPDF 导出 PDF 时，遇到 Chrome 单个 Canvas 约 32767px 高度限制，如何将超长内容分页导出？",
+    "answer": "## 虚拟滚动实现\n\nuseVirtualScroll hook：根据 scrollTop 和 viewportHeight 计算可见页面范围（start/end），加上 overscan（预渲染 2 页）做缓冲区。用 spacerHeight（totalPages * pageHeight）撑开容器让滚动条正常工作。滚动事件用 throttle(16ms) 实现 60fps。\n\nCanvas 由 useEffect 命令式管理，挂载到 imperativeRootRef 而非 React JSX 中，防止 React 重渲染清空 Canvas 像素。\n\n## 三层叠加架构\n\nL1: Canvas（PDF 像素渲染，z-index:1）\nL2: 透明 div（文本选择层，z-index:2）\nL3: 高亮标注层（绝对定位 div，z-index:3）\n\n三层使用 position:absolute 叠加在同一容器内。高亮坐标通过 PDF viewport.convertToViewportPoint 转换（PDF 原点在左下角，DOM 在左上角，需翻转 Y 轴）。\n\n## Chrome 32767px 限制\n\n使用 canvas.slice() 思想：先 html2canvas 生成完整 Canvas，然后按 A4 页面高度（842pt * scale）逐段 drawImage 到新的 pageCanvas 上，每段用 jspdf.addPage + addImage。降级方案：内容高度超过 16000px 或 html2canvas 失败时，自动回退到 window.print()。"
+  },
+  {
+    "title": "如何设计一套基于 postMessage 的跨窗口 JSON-RPC 2.0 通信协议？",
+    "difficulty": "hard",
+    "categoryName": "前端架构",
+    "categorySlug": "frontend-architecture",
+    "tagNames": ["跨窗口通信", "postMessage", "JSON-RPC"],
+    "content": "## 背景\n\n在一个政采 AI 平台中，AI Agent 运行在独立的 iframe 中，需要与主页面进行双向通信：主页面发送业务上下文给 Agent，Agent 返回分析结果和操作指令给主页面。\n\n## 题目\n\n1. 请基于 JSON-RPC 2.0 规范设计一套跨窗口通信协议，支持 Request（含 id）、Notification（无 id）、Response（含 result/error）三种消息类型。如何保证消息的可靠性和顺序？\n\n2. 通信过程中如果一方尚未 ready 就收到了消息，如何处理？请设计握手协议（含重试逻辑和超时机制）和待发送队列（pending queue）。\n\n3. 当同一个页面内同时存在 iframe Agent 和同窗口 npm 组件 Agent 时，如何区分消息来源、避免消息混乱？",
+    "answer": "## JSON-RPC 2.0 消息格式\n\nRequest: { jsonrpc: '2.0', method: string, params?, id }\nNotification: { jsonrpc: '2.0', method, params }（无 id，不期望响应）\nSuccessResponse: { jsonrpc: '2.0', result, id }\nErrorResponse: { jsonrpc: '2.0', error: { code, message, data? }, id }\n\n验证规则：method 必须以 'rpc.' 开头，error.code 必须是整数，id 类型前后一致。\n\n## 握手协议 + 待发送队列\n\nPostMessageBridge 类管理连接状态。connect() 发送握手请求，每 500ms 重试，最多 5 次，10s 超时。send() 方法在连接前将消息暂存到 pendingQueue（最多 100 条，超 3s 丢弃），连接建立后立即 flushPendingQueue() 批量发送。\n\n## 消息来源区分\n\n每个 Bridge 实例用 nanoid 生成唯一 sourceId。接收消息时三层过滤：\n1. origin 校验（白名单）\n2. RPC 格式校验\n3. sourceId 过滤（同窗口模式下丢弃自己发出的消息）\n\n发送时自动附加 sourceId，targetOrigin 严格限定目标域。"
+  },
+  {
+    "title": "AI Agent 流式对话中，如何处理 SSE 消息、打字机效果和消息生命周期管理？",
+    "difficulty": "medium",
+    "categoryName": "AI 前端",
+    "categorySlug": "ai-frontend",
+    "tagNames": ["AI Agent", "SSE", "打字机效果", "状态机"],
+    "content": "## 背景\n\n政采 AI 平台需要实现一个智能对话功能：用户的提问通过 SSE（Server-Sent Events）流式返回 AI 回复，前端需要逐字展示打字机效果，同时支持中断生成、多轮对话和错误恢复。\n\n## 题目\n\n1. SSE 流式消息处理：如何使用 EventSource 或 fetch + ReadableStream 接收流式 AI 回复？请对比两种方式的优劣。\n\n2. 打字机效果：如何实现对 React 组件树（含 Markdown、代码块、内联元素）的逐字展示？\n\n3. 消息生命周期：从\"用户发送\"到\"AI 回复完成\"，消息一共经历哪些状态？如何处理 AbortController 中断生成、网络断开重连和陈旧响应的丢弃？",
+    "answer": "## SSE 方案对比\n\nfetch + ReadableStream（推荐）：支持 POST 请求、自定义 Header（含 Authorization）、AbortController 中断。需手动实现重连。\n\nEventSource：仅 GET 请求、不支持自定义 Header、只能 close() 中断。内置自动重连。\n\n生产环境推荐 fetch + ReadableStream，通过 response.body.getReader() + TextDecoder 逐块解析 SSE 数据。\n\n## 打字机效果 Hook\n\nuseTypingEffect hook：phase 状态机（idle → running → done）。start() 递归调用 tick()，每次随机 chunkSize（更自然），用 setTimeout 控制速度。支持 SessionStorage 持久化（通过 streamId），页面刷新后继续打字。新内容到达时（fullText 增长但 phase 为 done）自动继续。\n\n## 消息状态机\n\n7 种状态：pending → sent → streaming → done / error / aborted / expired\n\nAbortController + seq 号双重保证：\nsendMessage 前 abortRef.abort() 中断上次请求，seqRef++ 递增序列号。流式接收时每次 yield 检查 seq 是否匹配，不匹配则丢弃（这是处理陈旧响应的关键）。AbortError 被静默捕获，其他错误标记为 error 状态。"
+  },
+  {
+    "title": "如何在复杂表单系统中同时使用 MobX 和 Redux-Saga？各自的职责边界如何划分？",
+    "difficulty": "medium",
+    "categoryName": "状态管理",
+    "categorySlug": "state-management",
+    "tagNames": ["MobX", "Redux-Saga", "状态管理"],
+    "content": "## 背景\n\n在一个包含 14+ 业务模块的采购文件编制系统中，每个模块都有独立的表单状态。全局状态（权限、路由、用户信息）使用 Dva（基于 Redux + Redux-Saga），而各模块的表单状态使用 MobX。两个状态管理库需要共存。\n\n## 题目\n\n1. MobX 和 Redux 在同一项目中共存的架构原则是什么？什么数据放 Redux，什么数据放 MobX？\n\n2. MobX 的 @observable + @action 和 Redux 的 dispatch + reducer 在处理复杂嵌套表单状态时各有什么优劣？\n\n3. 跨状态系统的数据流：用户点击按钮，将模块 A 的全部表单数据复制到模块 B。涉及从 MobX Store 读取 → Saga 异步请求后端 → 写入另一个 MobX Store。请设计这条数据流。",
+    "answer": "## 职责划分原则\n\nRedux（全局）：用户信息/权限、路由状态、全局配置、工作流步骤、跨模块通信事件。单一可序列化 store，便于时间旅行调试。\n\nMobX（局部）：表单字段值、UI 状态（展开/折叠）、模块内校验结果、计算属性（@computed）、编辑草稿。分散响应式 store，便于细粒度更新。\n\n### 嵌套表单为什么适合 MobX？\n\nMobX：this.vo.budget.amount = amount 一行搞定深层嵌套更新，@computed 自动缓存派生值。\nRedux：需要三层展开 {...state, vo: {...state.vo, budget: {...state.vo.budget, amount}}}，50+ 字段样板代码爆炸。\n\n## 跨状态系统数据流\n\n1. MobX Store 读取：toJS(sourceModel.vo) 序列化为纯 JS（关键！不可直接传 observable）\n2. store.dispatch({ type: 'template/copyModule', payload }) 触发 Saga\n3. Saga 异步调 api.template.copy，返回后写回目标 MobX Model\n4. targetModel.applyCopiedData(data)：更新 vo + 重新 generateSchema() 触发表单重渲染\n\n### 共存规则\n- Redux 不直接引用 MobX observable → toJS() 序列化\n- MobX Store 不订阅 Redux Store → 回调桥接，单向数据流\n- 单个组件不混用 → @observer 或 @connect 二选一"
+  },
+  {
+    "title": "前端金融级金额计算：为什么 0.1 + 0.2 !== 0.3？如何在工程中彻底解决浮点数精度问题？",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": ["big.js", "高精度计算"],
+    "content": "## 背景\n\n在政府采购平台中，所有涉及金额的字段（预算金额、中标金额、合同金额）都必须精确到分，且需要支持大写中文金额转换（如\"壹佰贰拾叁万肆仟伍佰陆拾柒元捌角玖分\"），这是政府财务合规的硬性要求。\n\n## 题目\n\n1. 解释 IEEE 754 双精度浮点数为什么会产生 0.1 + 0.2 = 0.30000000000000004 这样的精度问题？这与银行家舍入法有什么关系？\n\n2. 请对比 big.js、decimal.js 和原生 BigInt 三种高精度方案的优劣和适用场景。\n\n3. 设计一个 MoneyText 组件，输入金额（如 1234567.89），自动显示格式化数字、中文大写和审计视图（元角分拆分）。",
+    "answer": "## IEEE 754 根因\n\n0.1 和 0.2 在二进制中是无限循环小数，IEEE 754 52 位尾数截断导致精度丢失。银行家舍入（四舍六入五成双）是 IEEE 754 默认舍入模式，目的减少统计偏差。\n\n## 方案对比\n\nbig.js（6KB）：任意精度小数，API 简洁（.plus/.times/.div），适合财务金额场景——最佳选择。\ndecimal.js（32KB）：big.js 超集，支持三角函数/对数，适合科学计算。\nBigInt（原生 0KB）：仅整数，适合大整数 ID/计数器。\n\n关键陷阱：new Big(0.1) 不行！必须 new Big('0.1') 传字符串，否则浮点数已经在 JS 层面丢失精度。\n\n## MoneyText 组件设计\n\nformatMoney：big.js 精确 toFixed(2) + 正则千分位。\ntoChineseAmount：分离整数/小数部分，整数部分按万/亿分段，每段千/百/十转换，小数部分角/分映射。\n审计视图：元（整数部分）、角（小数第一位）、分（小数第二位）分别展示。\n\n业务关键点：所有中间计算必须用 big.js，不能先转 number 再计算。"
+  },
+  {
+    "title": "如何设计一个 Element Locator SDK，实现跨页面的自动化表单字段定位和巡检？",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": ["自动化测试", "Element Locator", "MutationObserver"],
+    "content": "## 背景\n\n在政采监管平台中，AI 巡检系统需要自动打开页面、定位到特定表单字段、滚动到可视区域并高亮标记。这个功能需要处理复杂的场景：多层 Tab 切换、动态加载模块、虚拟滚动表格行、微前端跨应用导航。\n\n## 题目\n\n1. 请设计 Element Locator 的流水线 DSL，支持：页面导航、等待元素出现、点击 Tab 切换、滚动到元素、高亮标记。如何保证 DSL 简洁且可扩展？\n\n2. 在微前端环境中，如何让 Locator 正确计算目标字段的绝对坐标？\n\n3. 如果目标字段在虚拟滚动列表中（只有可视区域内的 DOM 节点存在），如何处理？请设计滚动查找策略。",
+    "answer": "## Locator DSL 设计\n\n每个字段对应一个 LocatorAction[] 流水线：\nnavigate（路径参数支持 {projectId} 模板替换）→ sleep（等待子应用加载）→ triggerPageEvent（自定义事件切换 Tab/模块，参数通过 querystring 传递）→ scrollToElement → highlight。\n\n执行引擎逐条执行流水线，每条 action 有独立的超时和错误处理。\n\n## MutationObserver 等待元素\n\nwaitForElement 用 MutationObserver 监听 document.body 的 childList + subtree 变化，检测到目标 selector 后 resolve。超时时间到达 reject。比轮询高效且响应即时。\n\n## 微前端坐标计算\n\ngetMicroAppOffset：通过 [data-name] 属性定位子应用容器，getBoundingClientRect 获取容器偏移。最终坐标 = element.getBoundingClientRect() + containerOffset + scrollOffset。\n\n## 虚拟滚动列表查找\n\n逐批滚动策略：检查当前可见行（[data-row-index]）→ 未找到则 scrollTop += 80% 视口高度 → 等待 200ms 渲染 → 重复（最多 20 次）。ReactVirtualized 可用 scrollToRow 直接跳转。"
+  },
+  {
+    "title": "嵌套微前端应用中，如何管理多层子应用的生命周期和路由同步？",
+    "difficulty": "hard",
+    "categoryName": "前端架构",
+    "categorySlug": "frontend-architecture",
+    "tagNames": ["微前端", "qiankun"],
+    "content": "## 背景\n\n政采平台存在三层嵌套的微前端架构：L1 主应用（布局+权限）→ L2 采购子应用（业务入口）→ L3 订单子应用（内嵌）。每层都是独立部署的 qiankun 子应用，同时可作为宿主加载下一层。\n\n## 题目\n\n1. 当 L3 子应用内发生路由变化时，如何让 L1 主应用的 URL 和侧边栏正确更新？请设计三级路由同步机制。\n\n2. L2 子应用卸载时（用户切换到其他模块），如何确保 L3 子应用也被正确销毁？如何避免内存泄漏和事件监听残留？\n\n3. 如何检测 L3 子应用是否已经渲染完成？请设计一个比轮询更可靠的方案。",
+    "answer": "## 三级路由同步\n\nRouteBus 类：向上冒泡（子→父，postMessage ROUTE_CHANGE 事件），向下广播（父→子，自定义事件）。isSyncing 锁 50ms 防回弹。\n\nL1 主应用监听 message 事件，parse URL 确定 level 和 subPath，history.pushState 更新 browser URL + updateActiveMenu 更新侧边栏。popstate 时反向通知子应用。\n\n## 级联销毁 + 防内存泄漏\n\nMicroAppTree 树状结构：每个节点持有 children Map 和 AbortController。destroy() 先递归销毁所有子孙，再 ac.abort() 一键清除事件监听（addEventListener 的 signal 参数），最后 unmount 自身。\n\nWeakMap registry 防止循环引用导致 GC 无法回收。\n\n## 渲染完成检测\n\n推荐方案：子应用 mount 后主动 postMessage MICRO_APP_MOUNTED 事件。父应用 waitForMicroApp 用 Promise + setTimeout 超时包装。比 DOM 属性轮询更可靠，比 MutationObserver 语义更清晰。\n\n兼容方案：轮询 [data-name] 属性（最多 60 次）、MutationObserver 监听容器子节点变化。"
+  },
+  {
+    "title": "如何实现两份 PDF 文档的并排对比与差异高亮定位？",
+    "difficulty": "hard",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": ["PDF 渲染", "文档对比", "Canvas"],
+    "content": "## 背景\n\n在一个智能巡检平台中，需要对比两家供应商的投标 PDF 文件，找出相似/重复内容，并在两侧文档中高亮标注，点击高亮区域可跳转到对应位置。\n\n## 题目\n\n1. 后端返回了两份文档的差异数据（含位置坐标），前端如何在 PDF Canvas 上叠加高亮图层？Canvas 是像素级操作，如何让高亮区域可以被点击并触发事件？\n\n2. 两个 PDF 查看器需要同步滚动。如何设计同步机制，同时避免因用户正在查看另一侧而产生的体验问题？\n\n3. 差异数据中标记了文本位置（如第3页，坐标(100,200,300,40)），当用户点击侧边栏的差异列表项时，如何让 PDF 查看器自动滚动到该位置并高亮？",
+    "answer": "## 高亮图层叠加\n\n三层架构：L1 Canvas（PDF）→ L2 透明交互层 → L3 高亮 div（绝对定位，背景 rgba 半透明）。\n\n高亮 div 可绑定 onClick 事件，利用 DOM 事件冒泡而非 Canvas 像素检测。PDF 坐标通过 viewport.convertToViewportPoint 转换为 DOM 坐标（关键：PDF 原点左下角，DOM 原点左上角，Y 轴翻转）。\n\n## 同步滚动\n\nuseSyncScroll hook：activeRef 跟踪当前操作源（left/right/null）。滚动时记录源容器，计算 scrollRatio，同步到目标容器。500ms 后重置 activeRef，防止双向触发死循环。用户在一侧操作时，另一侧的 scroll 事件被忽略。\n\n## 差异跳转\n\ndiffPairs 数组用 nanoid 关联左右两侧高亮（双向映射）。\n\nscrollToHighlight：1) findPageByDiffId 定位页号 → 2) virtualScrollRef.scrollToPage 跳页 → 3) waitForElement 等待渲染 → 4) scrollIntoView + highlight-blink 闪烁动画（3s 后自动消失）。\n\n侧边栏点击 → 两侧同步跳转到对应高亮位置。"
+  }
+]

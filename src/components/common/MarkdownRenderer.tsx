@@ -13,7 +13,7 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
   const normalized = content.replace(/\\n/g, "\n");
 
   return (
-    <div className={`prose prose-slate max-w-none prose-headings:text-foreground prose-p:text-foreground/80 prose-code:text-primary prose-code:bg-accent prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-slate-900 prose-pre:text-slate-50 ${className}`}>
+    <div className={`prose prose-slate max-w-none prose-headings:text-foreground prose-p:text-foreground/80 ${className}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]}>
         {normalized}
       </ReactMarkdown>

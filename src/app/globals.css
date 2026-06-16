@@ -42,6 +42,44 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* ===== Markdown 代码样式 ===== */
+
+/* 行内代码 */
+.prose :not(pre) > code {
+  color: var(--color-primary);
+  background: var(--color-accent);
+  padding: 0.15em 0.4em;
+  border-radius: 0.3rem;
+  font-size: 0.875em;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* 代码块容器 */
+.prose pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* 代码块内部 code 标签 —— 清除 typography 默认样式 */
+.prose pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  font-weight: 400;
+  font-family: var(--font-mono, "SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace);
+  white-space: pre;
+  word-wrap: normal;
+}
+
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
   width: 6px;

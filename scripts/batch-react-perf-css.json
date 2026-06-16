@@ -1,0 +1,236 @@
+[
+  {
+    "title": "React Fiber 架构：调度优先级与可中断渲染",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Fiber",
+      "调度"
+    ],
+    "content": "## 题目\nReact Fiber解决了什么问题（Stack Reconciler痛点）？Fiber Node的数据结构和双缓冲（current/workInProgress）机制？lane模型如何实现优先级调度？为什么React 16+能中断渲染而React 15不能？",
+    "answer": "Fiber解决：同步递归不可中断导致长任务掉帧。Fiber Node是链表结构（child/sibling/return），可随时暂停恢复。双缓冲：current和workInProgress两棵树交替，commit阶段一次DOM更新。lane模型：31位二进制表示优先级，用位运算合并/判断。中断原理：workLoop中shouldYield()检查剩余时间<5ms则暂停，让出主线程。"
+  },
+  {
+    "title": "useEffect 闭包陷阱与 cleanup 机制",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Hooks",
+      "useEffect"
+    ],
+    "content": "## 题目\n1.useEffect闭包陷阱是什么？为什么setInterval内state总是旧值？\n2.cleanup函数的执行时机和常见用途？\n3.useEffect vs useLayoutEffect的区别和各自适用场景？\n4.如何实现一个useInterval Hook（解决setInterval闭包问题）？",
+    "answer": "闭包陷阱：effect内的函数捕获的是创建时的state值。setInterval在effect中只创建一次=>永远读到初始值。useLayoutEffect在DOM变更后同步执行（阻塞渲染），适合DOM测量/避免闪烁；useEffect异步不阻塞。useInterval方案：用useRef存callback，interval内读ref.current，每次render更新ref。cleanup在下次effect前或unmount时执行。"
+  },
+  {
+    "title": "useMemo/useCallback 的使用边界",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Hooks",
+      "性能优化"
+    ],
+    "content": "## 题目\nuseMemo和useCallback什么时候该用什么时候不该用？它们的内存开销vs重新计算开销如何权衡？React Forget编译器（自动memoization）会完全替代它们吗？以下场景需要用useMemo吗：\n1.<div style={{color:'red'}}>\n2.const doubled = arr.map(x=>x*2); return <List data={doubled}>\n3.const handler = () => doSomething(id); return <Child onClick={handler}>",
+    "answer": "不该用的场景：简单计算开销<创建memo开销（如四则运算）、引用类型传给原生DOM元素（React不会对原生元素做浅比较）。该用的场景：传给React.memo子组件的引用值、useEffect依赖数组中的对象、昂贵的计算（大数据sort/filter）。Forget编译器编译时自动添加等效memoization，最终会减少显式useMemo/useCallback需求。场景答案：1.不需要2.不需要（简单map）3.如果Child是React.memo则需要。"
+  },
+  {
+    "title": "React 18 并发特性：useTransition vs useDeferredValue",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "Concurrent",
+      "Suspense"
+    ],
+    "content": "## 题目\nuseTransition和useDeferredValue有什么区别？什么场景选哪个？Suspense + startTransition如何实现路由切换时保持旧页面（不闪白）？React 18的自动批处理（Automatic Batching）相比React 17有什么变化？",
+    "answer": "useTransition：包裹状态更新，返回isPending标志，适用由用户交互触发的重计算（搜索过滤）。useDeferredValue：延迟值更新，适用props变化触发的重渲染（父组件传入的值）。Suspense + startTransition：包裹路由导航，React先渲染旧路由直到新路由数据就绪，避免fallback闪烁。自动批处理：React 18中setTimeout/Promise/native事件内的多次setState也自动合并，React 17只在React事件中批处理。"
+  },
+  {
+    "title": "状态提升 vs Context vs 状态管理库的选择决策树",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "状态管理",
+      "Context"
+    ],
+    "content": "## 题目\n1.Context的性能陷阱是什么？为什么Context.Provider的值变化会导致所有Consumer重渲染？如何用split context + useMemo优化？\n2.什么场景下React自带的方案就够了，什么场景下必须引入Zustand/Jotai/Redux？\n3.一个表单有50+字段，如何设计状态结构避免不必要的重渲染？",
+    "answer": "Context陷阱：Provider value变化→所有useContext组件重渲染，即使只用了value的一小部分。优化：拆分为多个Context（读写分离）、useMemo包裹value、或用Zustand等外部store（精确订阅，selector级更新）。决策：全局状态少变化(Context)、复杂状态逻辑+中间件(Redux/Zustand)、原子化+精准订阅(Jotai/Recoil)。50+字段表单：用MobX(observable粒度为属性级)或Jotai(原子)，避免Redux全局store。"
+  },
+  {
+    "title": "React 合成事件原理与事件委托",
+    "difficulty": "medium",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "事件",
+      "合成事件"
+    ],
+    "content": "## 题目\nReact合成事件(SyntheticEvent)的设计目的是什么？e.persist()和e.nativeEvent的应用场景？React 17+将事件委托挂载到rootNode而非document，这个改动解决了什么问题？在React中如何监听非合成事件（如resize/scroll）？",
+    "answer": "合成事件目的：抹平浏览器差异、事件池复用（React 16）、统一冒泡行为。React 17事件委托改到rootNode解决：1)多个React版本共存时document上的事件冲突 2)e.stopPropagation()无法阻止到达document的问题。非合成事件用useEffect + addEventListener，或用ref直接绑定。React 17废弃e.persist()（取消事件池机制）。"
+  },
+  {
+    "title": "Server Components vs Client Components 的边界设计",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "RSC",
+      "Next.js"
+    ],
+    "content": "## 题目\nRSC（React Server Components）和传统SSR有什么区别？'use client'和'use server'的边界如何划定？什么组件应该放服务端，什么必须放客户端？跨Server/Client边界传递数据时有哪些限制（序列化/函数不能传）？",
+    "answer": "RSC vs SSR：RSC在服务端运行一次不水合（零JS），SSR需要水合（hydrate）。边界：交互组件用'use client'（按钮/表单/动画），纯数据展示用Server Component。数据限制：props必须可序列化（JSON-serializable），不能传函数/JSX元素/Symbol。Server Component可直接await数据而无需useEffect fetch。嵌套模式：外层Server→内层Client（Server传数据给Client）→Client内再包Server（作为children传）。"
+  },
+  {
+    "title": "虚拟列表在复杂交互场景下的完整实现",
+    "difficulty": "hard",
+    "categoryName": "React",
+    "categorySlug": "react",
+    "tagNames": [
+      "React",
+      "虚拟列表",
+      "性能优化"
+    ],
+    "content": "## 题目\n实现一个支持以下特性的VirtualList：1.动态高度（不等高item） 2.粘性分组标题 3.滚动到指定索引（scrollToIndex） 4.支持双向加载（向上/向下滚动加载更多）\n如何解决动态高度导致滚动条跳动的问题？有哪些预估算高度+实测后修正的策略？",
+    "answer": "核心数据结构：positions数组记录每项top/bottom/height，用二分查找定位当前scrollTop对应索引。动态高度：先用预估高度渲染，getBoundingClientRect()实测后更新positions并修正后续项偏移——用ResizeObserver监听每项高度变化。scrollToIndex：计算目标offset → scrollTo + 缓存修正。双向加载：监听scrollTop<阈值触发onLoadPrev，scrollBottom<阈值触发onLoadNext，加载后修正scrollTop保持视觉位置不变。"
+  },
+  {
+    "title": "Web Vitals 优化：LCP / INP / CLS 实战策略",
+    "difficulty": "hard",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "Web Vitals",
+      "LCP/INP/CLS"
+    ],
+    "content": "## 题目\nLCP最大内容绘制如何优化（以图片为例）？INP(Interaction to Next Paint)替代FID后关注什么？CLS累计布局偏移的常见原因及修复？如何用PerformanceObserver API在生产环境统计真实用户数据？",
+    "answer": "LCP优化：预加载关键图片(link rel=preload)、使用fetchpriority=high、响应式图片(srcset)、CDN加速。INP关注所有交互延迟（非仅首次），优化：拆分长任务(requestIdleCallback)、debounce非关键事件、Web Worker移计算。CLS来源：无尺寸图片、动态注入广告、Web Font切换。修复：图片设置width/height、字体用size-adjust、动画用transform（compositor-only）。RUM统计：new PerformanceObserver监听paint/layout-shift类型，上报到Sentry/自建平台。"
+  },
+  {
+    "title": "打包体积优化：Tree Shaking 原理与副作用文件处理",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "Tree Shaking",
+      "Webpack"
+    ],
+    "content": "## 题目\nTree Shaking的实现原理是什么（ESM静态分析+DCE）？为什么CJS无法Tree Shake？package.json的sideEffects字段如何配置？import * as React from 'react'和import { useState } from 'react'打包体积有区别吗？如何用webpack-bundle-analyzer定位体积问题？",
+    "answer": "Tree Shaking：ESM的import/export在编译时确定依赖图，标记未使用的导出为dead code，Terser在minify阶段删除。CJS的require动态执行无法静态分析。sideEffects:false表示文件无副作用可直接删除；数组指定有副作用的glob。命名导入会做tree shaking，命名空间导入会引入整个模块。bundle-analyzer生成可视化treemap查看每个包的gzip大小。"
+  },
+  {
+    "title": "资源加载优化：preload / prefetch / preconnect 的正确使用",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "资源加载",
+      "preload/prefetch"
+    ],
+    "content": "## 题目\npreload、prefetch、preconnect、dns-prefetch各自在什么时机触发？preload和prefetch的优先级区别？preload使用不当会导致什么问题（如阻塞onload）？如何实现图片的渐进加载（LQIP → 原图）？",
+    "answer": "preload：当前页面必需资源，高优先级，立即下载（字体、关键CSS）。prefetch：未来页面可能用到的资源，低优先级，空闲时下载（路由预取）。preconnect：提前建立TCP+TLS连接（第三方域）。dns-prefetch：仅DNS解析。preload陷阱：过多preload抢占关键资源带宽、不写as属性无法正确应用优先级、阻塞window.onload。LQIP：先用base64缩略图(blur-up)，再用IntersectionObserver懒加载原图。"
+  },
+  {
+    "title": "长任务拆分：requestIdleCallback + Scheduler API",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "性能优化",
+      "长任务",
+      "Scheduler"
+    ],
+    "content": "## 题目\n什么是长任务（>50ms）？如何用requestIdleCallback拆分？没有requestIdleCallback时（Safari不支持）如何polyfill？React的Scheduler包如何做时间切片？MessageChannel在其中扮演什么角色？",
+    "answer": "长任务>50ms阻塞主线程导致INP升高。拆分：将任务分成小片段，每片段用requestIdleCallback(deadline.timeRemaining()>0)或setTimeout(0)让步。Safari polyfill：用MessageChannel的postMessage模拟（微任务后宏任务执行）。React Scheduler：用MessageChannel + 优先级队列，每个workLoop中检查shouldYield（耗时>5ms），是则让出主线程。MessageChannel短延迟(比较setTimeout 4ms最小延迟)。"
+  },
+  {
+    "title": "React 渲染优化：React.memo / useMemo 的误用场景",
+    "difficulty": "medium",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "React",
+      "性能优化",
+      "React.memo"
+    ],
+    "content": "## 题目\nReact.memo放在什么位置最有效？props全是非引用类型还需要memo吗？useMemo缓存JSX vs React.memo包装组件的区别？为什么在Context消费者上React.memo无效？Profiler API怎么用？",
+    "answer": "React.memo对props做浅比较。props全是基础类型时React.memo收益最大（无需diff子组件树）。useMemo缓存JSX：将VNode创建移到hook中，仅依赖变化时才重建。React.memo：跳过整个子树的render。Context消费者上memo无效因为Context变化直接触发订阅者重渲染。Profiler：<Profiler id='x' onRender={callback}>包裹组件，记录每次render的duration和commit时间，定位慢组件。"
+  },
+  {
+    "title": "Next.js 中的缓存策略：全链路缓存体系",
+    "difficulty": "hard",
+    "categoryName": "性能优化",
+    "categorySlug": "performance",
+    "tagNames": [
+      "Next.js",
+      "缓存",
+      "SSR/ISR"
+    ],
+    "content": "## 题目\nNext.js App Router的全链路缓存包含哪4层？full route cache vs data cache的区别？ISR的stale-while-revalidate在Next.js 14+的行为变化？如何对一个实时性要求高的页面做部分静态+部分动态的混合渲染？",
+    "answer": "4层缓存：1)请求记忆化(React cache函数，单次render去重) 2)数据缓存(fetch的next.revalidate，跨请求持久) 3)全路由缓存(静态渲染的HTML/RSC payload，服务端内存) 4)路由缓存(客户端内存，prefetch缓存)。PPR(Partial Prerendering)：用Suspense边界划分静态shell和动态hole，静态部分直接返回，动态部分streaming。ISR：revalidate时间内返回缓存，后台触发重新生成，Next 14+支持按路径手动revalidate。"
+  },
+  {
+    "title": "BFC（块级格式化上下文）的原理与实战",
+    "difficulty": "medium",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "BFC",
+      "布局"
+    ],
+    "content": "## 题目\n什么是BFC？触发BFC的方式有哪些？BFC能解决哪些布局问题？为什么overflow:hidden能清除浮动（原理）？display:flow-root是什么？BFC与外边距折叠（margin collapsing）的关系？",
+    "answer": "BFC是独立渲染区域，内部元素布局不影响外部。触发：overflow非visible、display:flow-root、float非none、position:absolute/fixed。解决：清楚浮动（BFC包含浮动子元素）、防止margin重叠（同BFC内相邻元素margin合并，不同BFC不合并）、防止文字环绕浮动元素。flow-root是专门创建BFC的属性（无overflow副作用）。margin collapsing只发生在同一BFC的块级元素之间。"
+  },
+  {
+    "title": "CSS Layout：Flexbox vs Grid 深度对比",
+    "difficulty": "medium",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "Flexbox",
+      "Grid"
+    ],
+    "content": "## 题目\n什么场景用Flexbox什么场景用Grid？Grid的fr单位如何与minmax结合做响应式？subgrid解决了什么痛点？以下布局用Flexbox还是Grid实现更合适：1.导航栏logo+菜单+头像 2.商品卡片网格 3.表单标签+输入框对齐 4.仪表盘多卡片布局",
+    "answer": "Flexbox：一维布局（行或列），内容驱动尺寸，适合组件内部排列（导航栏、表单行）。Grid：二维布局（行列），容器驱动尺寸，适合页面级布局（卡片网格、仪表盘）。fr + minmax实现响应式列宽。subgrid：子网格继承父网格轨道大小，解决嵌套网格列不对齐问题。答案：1.Flex 2.Grid 3.Grid(grid-template-columns:auto 1fr) 4.Grid(grid-template-areas定义区域)。"
+  },
+  {
+    "title": "CSS-in-JS 方案的优劣与性能影响",
+    "difficulty": "hard",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "CSS-in-JS",
+      "性能"
+    ],
+    "content": "## 题目\nruntime CSS-in-JS（styled-components/Emotion）vs zero-runtime（Linaria/panda CSS）vs Tailwind CSS的架构区别？运行时CSS-in-JS为什么有性能问题？React 18 Streaming SSR中CSS-in-JS会遇到什么问题？原子化CSS（atomic CSS）的复用原理？",
+    "answer": "Runtime方案在组件渲染时动态生成className和插入style标签，问题：1)JS bundle包含CSS逻辑 2)每次渲染重新计算样式 3)SSR需要额外提取CSS步骤。Zero-runtime方案编译时提取CSS为静态文件，运行时零开销。Streaming SSR问题：HTML分块传输时runtime方案注入的style可能落后于HTML，导致无样式闪烁(FOUC)。原子化CSS：每个CSS属性值组合对应一个不可变的工具类，极大提高复用率（如Tailwind的w-full、text-center）。"
+  },
+  {
+    "title": "CSS 动画性能：仅使用 transform 和 opacity 的原因",
+    "difficulty": "medium",
+    "categoryName": "CSS",
+    "categorySlug": "css",
+    "tagNames": [
+      "CSS",
+      "动画",
+      "性能"
+    ],
+    "content": "## 题目\n为什么高性能动画应只使用transform和opacity（compositor-only属性）？浏览器的渲染流水线（Style→Layout→Paint→Composite）各阶段开销如何？will-change的正确使用和滥用风险？如何用Chrome DevTools Performance面板分析动画瓶颈？CSS animation vs WAAPI(Web Animations API)的优劣？",
+    "answer": "transform和opacity位于合成阶段(Composite)，不触发布局和绘制，可由GPU直接处理。渲染流水线：Style(计算样式)→Layout(重排，最贵)→Paint(光栅化)→Composite(合成层)。will-change提前创建合成层避免运行时重建，但过多会消耗GPU内存。DevTools：Performance录制→查看Rendering→Paint闪烁→Layer面板查看合成层数量。WAAPI优点：JS控制时间线、组合动画、暂停/反转，比纯CSS更灵活。"
+  }
+]

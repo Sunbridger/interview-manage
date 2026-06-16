@@ -1,0 +1,210 @@
+[
+  {
+    "title": "Node.js Stream 的背压机制与管道模式",
+    "difficulty": "hard",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "Stream",
+      "背压"
+    ],
+    "content": "## 题目\n什么是Stream背压（backpressure）？Readable/Transform/Writable如何协调速率？pipe() vs pipeline()的区别？如何用Stream处理大文件(10GB)而不撑爆内存？实现一个可读流：每秒产生一个递增数字，消费者处理慢时自动暂停。",
+    "answer": "背压：生产速度>消费速度时，Writable的write()返回false通知上游暂停，drain事件恢复。pipe()自动处理背压但错误处理不好(不会destroy)。pipeline(stream.promises)自动处理错误和清理。大文件处理：fs.createReadStream → Transform(按行/按块处理) → fs.createWriteStream，内存中同时只存一块数据。自定义Readable：read()中push(data)，消费者调用read()，当push返回false(highWaterMark满)时暂停。Writeable：write()返回false时停止push，监听drain事件恢复。关键设计：highWaterMark控制缓冲区大小。"
+  },
+  {
+    "title": "Node.js 进程管理：Cluster vs Worker Threads vs Child Process",
+    "difficulty": "medium",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "Cluster",
+      "Worker"
+    ],
+    "content": "## 题目\nCluster(多进程)、Worker Threads(多线程)、Child Process(子进程)三者区别和适用场景？Cluster如何共享端口？Worker Threads和浏览器Web Worker的本质区别？为什么Node.js可以用require而Worker Threads需要import/require？如何在Worker Threads间传递大数据（SharedArrayBuffer vs TransferList）？",
+    "answer": "Cluster：fork多个进程(独立V8+独立内存)，IPC通信，适合CPU密集型+HTTP服务(利用多核)。通过主进程监听端口→round-robin分发或SO_REUSEADDR让内核分发。Worker Threads：单进程多线程(共享V8部分内存)，SharedArrayBuffer共享内存+Atomics同步，适合计算密集型(图片处理/加密)。Child Process：独立进程，通过stdio/IPC通信，适合非Node任务(调用Python/ffmpeg)。Worker vs Web Worker：Node Worker可require(Node API)、SharedArrayBuffer、更灵活的消息传递。大数据传递：TransferList(零拷贝转移所有权，原上下文不可再用)、SharedArrayBuffer(多线程共享读写需Atomics协调)。"
+  },
+  {
+    "title": "Express/Koa 洋葱模型的实现原理",
+    "difficulty": "medium",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "Koa",
+      "中间件"
+    ],
+    "content": "## 题目\nKoa的洋葱模型（onion model）是什么？为什么Express的中间件不是真正洋葱？async/await如何让Koa实现真正的洋葱？实现一个compose函数，将多个中间件组合成洋葱调用。Koa的ctx(上下文)对象的设计模式（委托模式）？",
+    "answer": "洋葱模型：请求从外到内穿过所有中间件，响应从内到外返回，形状如洋葱。Express中间件是线性的（下一个中间件执行完后不回到上一个的后续代码）。Koa用async/await实现：next()返回Promise，await next()让出执行权→内部中间件执行完→回到外部中间件继续执行next()后的代码。compose实现：function compose(middlewares) { return function(ctx) { let i = -1; return dispatch(0); function dispatch(idx) { if (idx<=i) return Promise.reject(new Error('next() called multiple times')); i=idx; const fn = middlewares[idx]; if(!fn) return Promise.resolve(); return Promise.resolve(fn(ctx, ()=>dispatch(idx+1))); } } }。ctx用delegates库(访问ctx.request.body等于ctx.body)。"
+  },
+  {
+    "title": "Node.js 内存泄漏排查实战",
+    "difficulty": "medium",
+    "categoryName": "Node.js",
+    "categorySlug": "nodejs",
+    "tagNames": [
+      "Node.js",
+      "内存泄漏",
+      "排查"
+    ],
+    "content": "## 题目\nNode.js服务内存持续增长如何排查？heapdump和Chrome DevTools Memory分析流程？常见的Node.js内存泄漏原因(全局变量/闭包/事件监听器未清理/Stream未销毁)？--max-old-space-size参数作用？Buffer和ArrayBuffer的内存管理区别？",
+    "answer": "排查流程：1)heapdump生成.heapsnapshot(进程启动时+30min后+疑似泄漏时) 2)Chrome DevTools Memory load三个snapshot 3)Comparison视图看Delta增长最多的对象 4)定位Retainers链找到持有引用不释放的代码。常见泄漏：global挂载数据、Express middleware内创建大对象但未释放、EventEmitter.on未off、Stream未destroy、setInterval未clear。--max-old-space-size设置V8老生代堆上限(默认约1.4GB)，接近时触发GC或OOM。Buffer是Node.js特有(堆外内存，不受V8 GC限制)，ArrayBuffer是JS标准(受GC管理)，Buffer.allocUnsafe分配未初始化内存(性能好但含旧数据)。"
+  },
+  {
+    "title": "XSS 攻击类型与 CSP 防御体系",
+    "difficulty": "hard",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "XSS",
+      "CSP"
+    ],
+    "content": "## 题目\n存储型/反射型/DOM型XSS的区别和攻击向量？为什么React默认防XSS(JSX自动转义)但仍然可能被攻击(dangerouslySetInnerHTML/a.href)？CSP(Content Security Policy)的nonce和hash模式各适用什么场景？strict-dynamic的意义？如何设计CSP的白名单同时不破坏第三方脚本？",
+    "answer": "存储型：恶意代码存数据库(每条用户都受影响) 反射型：URL参数直接拼入HTML(针对性攻击) DOM型：JS操作DOM时拼接不可信数据。React防XSS：JSX自动转义(React.createElement)，但dangerouslySetInnerHTML、a.href=javascript:、用户输入作为props仍危险。CSP nonce：每次请求生成随机nonce值(script nonce=xxx)，适合SSR。CSP hash：脚本内联时计算sha256哈希写入策略头，适合静态脚本。strict-dynamic：信任已允许脚本动态创建的脚本，减少白名单。第三方脚本：用strict-dynamic+nonce只允许根脚本，后续动态加载自动信任。"
+  },
+  {
+    "title": "CSRF 攻击原理与 SameSite Cookie 防御",
+    "difficulty": "medium",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "CSRF",
+      "Cookie"
+    ],
+    "content": "## 题目\nCSRF攻击的完整流程(以转账为例)？为什么SameSite=Lax可以防御大部分CSRF？SameSite=Strict和Lax的行为差异？双重Cookie验证(Double Submit Cookie)的原理？Token方案(CSRF Token放在哪里？header还是cookie？)？",
+    "answer": "CSRF流程：用户登录bank.com→黑客诱导访问evil.com→evil.com自动提交form到bank.com/transfer→浏览器自动带Cookie→服务端以为是用户操作。SameSite=Lax：跨站GET可带Cookie(如链接跳转)，跨站POST不带Cookie→防御写操作CSRF。SameSite=Strict：完全不带Cookie(最安全但影响体验，如从邮件点链接跳转已登录站点会登出)。双Cookie验证：服务端在Cookie中设随机token，前端从Cookie读token放自定义header(X-CSRF-Token)，服务端比较Cookie中的token和header中的token。攻击者无法读取目标域Cookie(同源策略)，也无法设置自定义header(跨域限制)。"
+  },
+  {
+    "title": "前端加密的边界：什么能做，什么不能做",
+    "difficulty": "medium",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "加密",
+      "密码学"
+    ],
+    "content": "## 题目\n前端加密为什么不能替代HTTPS？前端可以做哪些加密工作（传输前加密/数据脱敏/哈希）而哪些必须后端做（密码验证/权限校验/业务规则）？Web Crypto API能做什么(RSA/AES/SHA)？前端做RSA加密传输密码的意义和局限性？如何做前端敏感信息的脱敏展示？",
+    "answer": "前端加密不替代HTTPS：因为加密JS代码对攻击者可见(可逆向/篡改)，密钥无法安全存储。前端能做：传输前二次加密(密码→RSA公钥加密→后端私钥解密，防中间人，但公钥本身需HTTPS保护)、脱敏展示(手机号138****5678、身份证前3后4)、文件SHA-256哈希(秒传/去重)。后端独占：密码验证、权限控制、业务规则校验。Web Crypto API：crypto.subtle.encrypt/decrypt/digest/importKey，支持RSA/AES/SHA。加密局限：若攻击者控制了前端，可拦截用户输入在加密前获取明文。脱敏需前后端一致：列表API返回脱敏数据，详情需二次确认。"
+  },
+  {
+    "title": "OAuth 2.0 授权码流程与 PKCE 扩展",
+    "difficulty": "medium",
+    "categoryName": "安全",
+    "categorySlug": "security",
+    "tagNames": [
+      "安全",
+      "OAuth",
+      "PKCE"
+    ],
+    "content": "## 题目\nOAuth 2.0的授权码流程(Authorization Code Flow)为什么比隐式流程(Implicit Flow)更安全？PKCE(Proof Key for Code Exchange)解决了什么问题？为什么SPA不再推荐用Implicit Flow而推荐Auth Code + PKCE？refresh token应该存在哪里(SPA场景的安全性权衡)？",
+    "answer": "授权码 vs 隐式：隐式直接返回access_token在URL fragment中(暴露在浏览器历史/redirect URL日志中)，授权码先返回一次性code，后端用code+secret换token(access_token不经过浏览器)。PKCE机制：客户端生成code_verifier(随机字符串)→code_challenge=SHA256(verifier)→授权时发送challenge→换token时发送verifier，即使code被截获也无法换取token(无verifier)。SPA+PKCE：无client_secret也能安全使用Auth Code Flow。refresh token存储：HttpOnly Cookie(最安全但缺跨域灵活性)、Service Worker中(中等)、localStorage(最不安全，XSS可读)。权衡：使用BFF(Backend For Frontend)模式，token存在服务端session中，前端只持session cookie。"
+  },
+  {
+    "title": "前端插件系统设计：实现一个可扩展的插件架构",
+    "difficulty": "hard",
+    "categoryName": "设计模式",
+    "categorySlug": "design-patterns",
+    "tagNames": [
+      "设计模式",
+      "插件",
+      "架构"
+    ],
+    "content": "## 题目\n如何在前端项目中设计一个插件系统？以Webpack插件(tapable钩子)或VSCode扩展(contributes)为参考，实现一个简化版插件系统：\n1.定义生命周期钩子(同步/异步/瀑布)\n2.插件注册(plugin.apply方法)\n3.钩子按优先级排序执行\n4.支持插件间通信（事件总线）\n画架构图并写核心代码。",
+    "answer": "核心设计：使用Tapable风格的钩子系统。\n\nclass PluginSystem {\n  hooks = { beforeInit: new SyncHook(), afterInit: new AsyncHook(), transform: new WaterfallHook() };\n  register(plugin) { plugin.apply(this); }\n  async start() { this.hooks.beforeInit.call(); await this.hooks.afterInit.promise(); }\n}\n\nclass SyncHook {\n  taps=[]; tap(name,fn,priority=0){this.taps.push({name,fn,priority});this.taps.sort((a,b)=>b.priority-a.priority)}\n  call(...args){for(const t of this.taps)t.fn(...args)}\n}\n\nclass WaterfallHook {\n  taps=[]; tap(name,fn){this.taps.push({name,fn})}\n  call(value){return this.taps.reduce((acc,t)=>t.fn(acc),value)}\n}\n\n// 插件定义\nconst myPlugin = { apply(system) { system.hooks.transform.tap('my', v=>v+'!'); } };\n\n关键：钩子类型决定了执行模式(SyncHook串行/AsyncParallelHook并行/BailHook短路/WaterfallHook管道)。优先级排序让核心插件先执行。事件总线用于插件间松耦合通信。"
+  },
+  {
+    "title": "发布-订阅模式 vs 观察者模式 vs 事件总线的区别",
+    "difficulty": "medium",
+    "categoryName": "设计模式",
+    "categorySlug": "design-patterns",
+    "tagNames": [
+      "设计模式",
+      "观察者",
+      "发布订阅"
+    ],
+    "content": "## 题目\n观察者模式(Observer)和发布-订阅模式(Pub-Sub)有什么本质区别（调度中心）？EventEmitter的on/emit/once/off如何实现？如何用发布-订阅模式解耦React组件间的通信？EventEmitter的监听器数量有上限吗？内存泄漏如何处理？",
+    "answer": "核心区别：观察者模式中Subject直接维护Observer列表，调用Observer.update()（直接耦合）。发布-订阅有独立的调度中心(Event Channel)，Publisher和Subscriber互不知晓（完全解耦）。\n\n简单EventEmitter：\nclass EventBus { events=new Map(); on(event,fn){ if(!this.events.has(event))this.events.set(event,[]); this.events.get(event).push(fn); } emit(event,...args){ (this.events.get(event)||[]).forEach(fn=>fn(...args)); } off(event,fn){ const fns=this.events.get(event); if(fns){ const i=fns.indexOf(fn); if(i>-1)fns.splice(i,1); } } }\n\nReact解耦：非父子组件通信可共用一个EventBus实例。内存泄漏：组件卸载时必须off监听。Node默认每个event最多10个监听器(可setMaxListeners调整)。once：执行一次后自动off。"
+  },
+  {
+    "title": "前端中的策略模式与依赖注入实践",
+    "difficulty": "medium",
+    "categoryName": "设计模式",
+    "categorySlug": "design-patterns",
+    "tagNames": [
+      "设计模式",
+      "策略模式",
+      "依赖注入"
+    ],
+    "content": "## 题目\n策略模式在前端的实际应用场景（表单校验/支付方式/定价规则）？如何用依赖注入(IoC容器)管理大型应用的服务依赖？不用DI容器时，模块间循环依赖如何解决？用inversify/token-injection或自实现简易DI容器的思路？",
+    "answer": "策略模式实战：表单校验策略(validatorMap={email:emailValidator, phone:phoneValidator})，根据不同字段类型切换校验逻辑。支付方式：支付宝/微信/银联各自实现PayStrategy接口。DI容器核心：Map<token, factory>服务注册表+单例/瞬态生命周期管理。\n\n简易DI：\nclass Container { services=new Map(); register(token, factory, {singleton=true}) { this.services.set(token, {factory,instance:null,singleton}); }\nresolve(token){ const s=this.services.get(token); if(s.singleton){ if(!s.instance)s.instance=s.factory(this); return s.instance; } return s.factory(this); } }\n\n解循环依赖：用forwardRef模式(如Angular的Inject(forwardRef(()=>Service))，延迟解析token到使用时而非注册时。或用事件/回调模式打破直接的模块依赖。"
+  },
+  {
+    "title": "前端单元测试的 Mock 策略：从 API 到时间",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "Mock",
+      "单元测试"
+    ],
+    "content": "## 题目\n前端测试中需要Mock什么？MSW(Mock Service Worker)相比jest.mock的优势？如何Mock定时器(jest.useFakeTimers)？如何测试异步组件（waitFor/findBy）？什么场景适合快照测试，什么场景不适合？如何测试自定义Hook(renderHook)？",
+    "answer": "Mock对象：API请求(MSW网络层拦截)、时间(setTimeout/setInterval用fake timers)、随机数(Math.random mock)、浏览器API(localStorage/IntersectionObserver)。MSW vs jest.mock：MSW拦截网络层(被测代码无感知)，jest.mock替换模块(侵入性强)。fake timers：jest.useFakeTimers()+jest.advanceTimersByTime(1000)，测试useInterval等定时逻辑。异步测试：waitFor(()=>expect(...))轮询、findBy*内置超时、act包裹状态更新。快照适合：纯展示组件（不变更频繁）、错误消息（语义化）。不适合：复杂交互组件、过大的快照。renderHook：@testing-library/react renderHook(()=>useMyHook())，返回{result:{current},rerender,unmount}。"
+  },
+  {
+    "title": "组件测试：如何用 Testing Library 做可访问性驱动的测试",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "Testing Library",
+      "可访问性"
+    ],
+    "content": "## 题目\nTesting Library的设计哲学(测试用户行为而非实现细节)体现在哪些API设计上？getByRole为什么优于getByTestId？如何测试表单交互(填写→提交→验证错误→成功)？如何测试键盘导航和无障碍功能？什么情况下仍需要data-testid？",
+    "answer": "设计哲学：DOM Testing Library的核心原则——测试越像软件被使用的方式越可靠。getByRole(按ARIA角色查找)→最接近用户和屏幕阅读器→优先使用；getByLabelText(表单标签)→其次；getByText(文本内容)→再次；getByTestId→最后选择(只看data-testid)。表单测试流程：userEvent.type(input,'text')→userEvent.click(submitBtn)→waitFor(()=>expect(errorMsg).toBeVisible())→修正→userEvent.click→expect(successMsg)。键盘测试：userEvent.tab()→{arrowdown}→{enter}。data-testid使用场景：动态生成内容且无语义角色、单元测试非交互的展示逻辑。"
+  },
+  {
+    "title": "E2E 测试：Playwright vs Cypress 的实际体验对比",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "测试",
+      "E2E",
+      "Playwright"
+    ],
+    "content": "## 题目\nPlaywright和Cypress在架构上的核心差异（浏览器通信方式/多标签页支持/多浏览器）？Playwright的auto-waiting和Web-First断言解决了什么痛点？如何设计E2E测试的fixture和seed数据策略？E2E测试与CI的集成(video/retry/trace)？如何测试文件上传/拖拽/剪贴板这些复杂交互？",
+    "answer": "架构差异：Cypress运行在浏览器同一事件循环中(通过代理注入)，无法多标签页；Playwright通过CDP/WebSocket与浏览器独立通信，支持多标签页/多浏览器(Chromium+Firefox+WebKit)。auto-waiting：Playwright自动等待元素可操作(actionability checks：可见→稳定→接收事件→无动画)。Web-First断言：expect(locator).toBeVisible()自动重试，无需手动waitFor。Fixture策略：API seed或DB seed每次测试前重置为已知状态(test.beforeEach)。CI集成：视频录制+失败截图+trace viewer(时间轴回放每一步)。文件上传：page.setInputFiles('input[type=file]', 'path/to/file.pdf')。拖拽：page.dragAndDrop(source, target)。剪贴板：grant permissions→navigator.clipboard.writeText→Ctrl+V。"
+  },
+  {
+    "title": "Webpack Loader vs Plugin 的本质区别 + 手写 Loader",
+    "difficulty": "hard",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "Webpack",
+      "Loader",
+      "Plugin"
+    ],
+    "content": "## 题目\nLoader和Plugin的设计目的和运行时机有何区别？手写一个Webpack Loader：将代码中的${VAR_NAME}占位符替换为构建时传入的环境变量值。Webpack的Tapable钩子体系(SyncHook/AsyncSeriesHook)如何工作？Complier和Compilation对象的区别？",
+    "answer": "Loader：文件级别的转换(非JS→JS模块)，在模块解析阶段执行，链式调用(pitch→normal，从右到左)。Plugin：构建全流程介入(从开始到输出)，通过Tapable钩子注册事件监听，可以修改compilation对象(修改chunk/asset)。\n\n手写Loader：module.exports = function(source) { const options = this.getOptions(); return source.replace(/\\$\\{(\\w+)\\}/g, (_, key) => options.vars[key] || ''); };\n\nTapable钩子：SyncHook(同步串行)、SyncBailHook(短路)、AsyncSeriesHook(异步串行)、AsyncParallelHook(异步并行)。Compiler：整个构建过程的对象(单例)。Compilation：每次构建的对象(含modules/chunks/assets)，watch模式每次重新构建产生新的Compilation。Plugin通过compiler.hooks.compilation获取compilation，再通过compilation.hooks来操作模块和资源。"
+  },
+  {
+    "title": "Vite 为什么比 Webpack 快？ESBuild + Rollup 双引擎架构",
+    "difficulty": "medium",
+    "categoryName": "工程化",
+    "categorySlug": "engineering",
+    "tagNames": [
+      "Vite",
+      "Webpack",
+      "构建工具"
+    ],
+    "content": "## 题目\nVite开发模式为什么快？Native ESM + 按需编译 vs Webpack全量打包的架构区别？ESBuild速度快的底层原因(Go语言/无AST转换/并行)？预构建(Pre-bundling)做了什么？生产环境为什么用Rollup而不是ESBuild？Vite的HMR(热更新)为什么快(精准失效+ESM热替换)？",
+    "answer": "Vite快的原因：Dev模式直接用浏览器原生ESM，文件按需编译(仅编译请求的模块)，Webpack需全量打包。ESBuild：Go编写(非JS单线程)、流式架构(无完整AST)、多核并行→快10-100倍。预构建：将CJS包转为ESM、合并小模块减少请求量、缓存到node_modules/.vite。生产用Rollup：ESbuild定位是转译工具(esbuild不擅长code splitting、plugin生态不够丰富、分包策略不成熟)，Rollup更成熟稳定。HMR：仅失效受影响的模块链(精准，不像Webpack刷新整个chunk)，原生ESM直接替换模块。"
+  }
+]
