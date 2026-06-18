@@ -39,6 +39,34 @@ export async function GET(request: NextRequest) {
     query = query.eq("question_tags.tag.slug", tag);
   }
 
+  // 收藏筛选：先查 ID，再 in 过滤（joined table 的 eq 在 Supabase 中不可靠）
+  const favorite = searchParams.get("favorite") || "";
+  if (favorite === "1") {
+    const { data: favRows } = await supabaseAdmin
+      .from("user_question_state")
+      .select("question_id")
+      .eq("is_favorite", true);
+    const ids = (favRows || []).map((r) => r.question_id);
+    if (ids.length === 0) {
+      return NextResponse.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+    query = query.in("id", ids);
+  }
+
+  // 已掌握筛选
+  const mastered = searchParams.get("mastered") || "";
+  if (mastered === "1") {
+    const { data: masteredRows } = await supabaseAdmin
+      .from("user_question_state")
+      .select("question_id")
+      .eq("is_mastered", true);
+    const ids = (masteredRows || []).map((r) => r.question_id);
+    if (ids.length === 0) {
+      return NextResponse.json({ data: [], total: 0, page, limit, totalPages: 0 });
+    }
+    query = query.in("id", ids);
+  }
+
   const { data, error, count } = await query
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);

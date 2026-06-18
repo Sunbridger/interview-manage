@@ -1,7 +1,6 @@
 "use client";
 
-import { use } from "react";
-import { useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { QuestionWithRelations } from "@/lib/types";
@@ -9,10 +8,10 @@ import { MarkdownRenderer } from "@/components/common/MarkdownRenderer";
 import { DifficultyBadge } from "@/components/common/DifficultyBadge";
 import { TagBadge } from "@/components/common/TagBadge";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Star, CheckCircle2, Eye, EyeOff, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { AnnotationProvider } from "@/components/annotation/AnnotationProvider";
 import { AnnotatableAnswer } from "@/components/annotation/AnnotatableAnswer";
 import { AnnotationSidebar } from "@/components/annotation/AnnotationSidebar";
+import { ArrowLeft, Star, CheckCircle2, Pencil, Trash2, MoreHorizontal, ChevronDown } from "lucide-react";
 
 export default function QuestionDetailPage({
   params,
@@ -23,14 +22,18 @@ export default function QuestionDetailPage({
   const router = useRouter();
   const [question, setQuestion] = useState<QuestionWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAnswer, setShowAnswer] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [isMastered, setIsMastered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
     fetch(`/api/questions/${id}`)
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
         if (data.error) {
           setQuestion(null);
         } else {
@@ -40,8 +43,20 @@ export default function QuestionDetailPage({
         }
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [id]);
+
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const toggleFavorite = async () => {
     const newVal = !isFavorite;
@@ -92,30 +107,76 @@ export default function QuestionDetailPage({
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 lg:space-y-6">
-      {/* 返回 + 操作 */}
+      {/* 顶部栏：返回 + 右侧操作按钮 */}
       <div className="flex items-center justify-between">
-        <Link
-          href="/questions"
+        <button
+          onClick={() => {
+            if (window.history.length > 1) router.back();
+            else router.push("/questions");
+          }}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           返回题库
-        </Link>
+        </button>
+
+        {/* 右侧操作区 */}
         <div className="flex items-center gap-2">
-          <Link
-            href={`/questions/${id}/edit`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            编辑
-          </Link>
+          {/* 收藏 */}
           <button
-            onClick={handleDelete}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-100 bg-white text-sm text-red-600 hover:bg-red-50 transition-all"
+            onClick={toggleFavorite}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+              isFavorite
+                ? "bg-amber-50 border-amber-200 text-amber-700"
+                : "border-border text-muted-foreground hover:border-amber-200 hover:text-amber-600"
+            }`}
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            删除
+            <Star className={`w-3.5 h-3.5 ${isFavorite ? "fill-amber-500 text-amber-500" : ""}`} />
+            {isFavorite ? "已收藏" : "收藏"}
           </button>
+
+          {/* 标记掌握 */}
+          <button
+            onClick={toggleMastered}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+              isMastered
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "border-border text-muted-foreground hover:border-green-200 hover:text-green-600"
+            }`}
+          >
+            <CheckCircle2 className={`w-3.5 h-3.5 ${isMastered ? "text-green-600" : ""}`} />
+            {isMastered ? "已掌握" : "标记掌握"}
+          </button>
+
+          {/* 更多操作下拉 */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+            >
+              <MoreHorizontal className="w-3.5 h-3.5" />
+              <ChevronDown className="w-3 h-3" />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-border rounded-lg shadow-lg py-1 z-50 min-w-[100px]">
+                <Link
+                  href={`/questions/${id}/edit`}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-foreground hover:bg-accent transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  编辑题目
+                </Link>
+                <button
+                  onClick={() => { setMenuOpen(false); handleDelete(); }}
+                  className="flex items-center gap-2 px-3 py-2 text-xs text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  删除题目
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -131,9 +192,7 @@ export default function QuestionDetailPage({
           </span>
         )}
         {question.source && (
-          <span className="text-xs text-muted-foreground">
-            来源：{question.source}
-          </span>
+          <span className="text-xs text-muted-foreground">来源：{question.source}</span>
         )}
       </div>
 
@@ -152,73 +211,16 @@ export default function QuestionDetailPage({
         <MarkdownRenderer content={question.content || "暂无题目描述"} />
       </div>
 
-      {/* 答案区域 — 批注模式 */}
-      {showAnswer ? (
-        <AnnotationProvider questionId={id}>
-          <div className="bg-white rounded-xl border border-border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-foreground">✅ 参考答案</h2>
-              <button
-                onClick={() => setShowAnswer(false)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
-              >
-                <EyeOff className="w-3.5 h-3.5" />
-                隐藏答案
-              </button>
-            </div>
-            <div className="pl-10">
-              <AnnotatableAnswer content={question.answer || "暂无参考答案"} />
-            </div>
-          </div>
-          <AnnotationSidebar />
-        </AnnotationProvider>
-      ) : (
+      {/* 答案区域 — 默认展开 + 批注 */}
+      <AnnotationProvider questionId={id}>
         <div className="bg-white rounded-xl border border-border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-foreground">✅ 参考答案</h2>
-            <button
-              onClick={() => setShowAnswer(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-white text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              显示答案
-            </button>
+          <h2 className="font-semibold text-foreground mb-4">✅ 参考答案</h2>
+          <div className="pl-10">
+            <AnnotatableAnswer content={question.answer || "暂无参考答案"} />
           </div>
-          <p className="text-sm text-muted-foreground italic">
-            点击「显示答案」查看参考答案
-          </p>
         </div>
-      )}
-
-      {/* 操作按钮 */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={toggleFavorite}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-            isFavorite
-              ? "bg-amber-50 border-amber-200 text-amber-700"
-              : "bg-white border-border text-muted-foreground hover:border-amber-200 hover:text-amber-600"
-          }`}
-        >
-          <Star
-            className={`w-4 h-4 ${isFavorite ? "fill-amber-500 text-amber-500" : ""}`}
-          />
-          {isFavorite ? "已收藏" : "收藏"}
-        </button>
-        <button
-          onClick={toggleMastered}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-            isMastered
-              ? "bg-green-50 border-green-200 text-green-700"
-              : "bg-white border-border text-muted-foreground hover:border-green-200 hover:text-green-600"
-          }`}
-        >
-          <CheckCircle2
-            className={`w-4 h-4 ${isMastered ? "text-green-600" : ""}`}
-          />
-          {isMastered ? "已掌握" : "标记掌握"}
-        </button>
-      </div>
+        <AnnotationSidebar />
+      </AnnotationProvider>
     </div>
   );
 }
