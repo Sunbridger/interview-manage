@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Category, Tag, QuestionWithRelations } from "@/lib/types";
 import { QuestionCard } from "@/components/questions/QuestionCard";
@@ -14,7 +14,7 @@ type FilterMode = "all" | "favorite" | "mastered";
 
 const PAGE_SIZE_OPTIONS = [12, 24, 48];
 
-export default function QuestionsPage() {
+function QuestionsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -290,6 +290,14 @@ export default function QuestionsPage() {
 }
 
 // ============================================
+export default function QuestionsPage() {
+  return (
+    <Suspense fallback={<div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>}>
+      <QuestionsPageInner />
+    </Suspense>
+  );
+}
+
 function EmptyState({ filterMode, onViewAll }: { filterMode: FilterMode; onViewAll: () => void }) {
   return (
     <div className="text-center py-16">
